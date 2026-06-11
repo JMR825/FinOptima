@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.env.example
+
+# Node
+node_modules/
+dist/
+*.local
+notebooks/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ML / data caches
+*.h5
+*.keras
+.ml_cache/
+
+# Sample data (auto-generated on startup)
+sample_data/*.csv
