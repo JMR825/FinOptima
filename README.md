@@ -1,4 +1,6 @@
-# AI-Powered Portfolio Optimization System
+# FinOptima
+
+##AI-Powered Portfolio Optimization System
 
 FinOptima is an AI-driven financial analytics platform built for OSC AI Build 1.0, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
 
