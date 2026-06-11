@@ -1,19 +1,28 @@
 # AI-Powered Portfolio Optimization System
 
-A full-stack final-year project that fetches live stock market data, applies machine learning for return prediction and clustering, optimizes portfolio allocation, and presents insights in an interactive dashboard.
+FinOptima is an AI-driven financial analytics platform built for OSC AI Build 1.0, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
 
 ## Abstract
 
-This system helps investors analyze a basket of stocks by combining real-time market data with predictive analytics. Users enter stock symbols and investment preferences; the backend fetches historical prices, engineers technical features, trains regression and LSTM models, clusters similar assets, and computes optimal portfolio weights using mean-variance optimization. Results are displayed in a React dashboard with live prices, allocation charts, risk metrics, and trend signals.
+FinOptima is designed to showcase how open-source AI can be applied to financial decision-making. Users enter stock symbols and investment preferences, and the system fetches market data, engineers financial features, predicts short-term returns using machine learning, groups similar assets through clustering, and computes optimized portfolio allocations. The results are displayed in a clean, responsive dashboard with live prices, prediction signals, risk metrics, and allocation charts.
+
+## Why this project
+
+This hackathon project focuses on building a practical AI system that is:
+- Open-source friendly and easy to extend.
+- Demo-ready with live and offline data modes.
+- Technically strong with ML, optimization, and dashboard visualization.
+- Useful in the real world for portfolio analysis and risk-aware investment planning.
 
 ## Objectives
 
-- Integrate live/historical stock data via Alpha Vantage (with offline fallback)
-- Preprocess time-series data with returns, moving averages, volatility, and RSI
-- Predict short-term returns using Linear Regression, Random Forest, and LSTM
-- Group stocks via KMeans clustering for diversification insight
-- Optimize portfolios for max Sharpe ratio or minimum volatility
-- Present results in a responsive, demo-ready dashboard
+- Integrate live and historical stock data using a pluggable market data provider.
+- Support offline demo mode using synthetic sample CSV files.
+- Preprocess time-series data with returns, moving averages, volatility, and RSI.
+- Predict short-term returns using regression-based models and optional LSTM.
+- Cluster stocks for diversification insights.
+- Optimize portfolio allocations for maximum Sharpe ratio or minimum volatility.
+- Present all results in a polished, hackathon-friendly dashboard.
 
 ## Methodology
 
@@ -25,11 +34,20 @@ This system helps investors analyze a basket of stocks by combining real-time ma
 6. **Optimization** — SciPy SLSQP with long-only constraints (weights sum to 1)
 7. **Dashboard** — React + Recharts visualize allocation, risk-return scatter, trends, and tables
 
+## Hackathon highlights:
+
+- Real-time market data integration.
+- ML-based return prediction.
+- Portfolio optimization engine.
+- Clustering for diversification analysis.
+- Offline demo mode for reliable presentations.
+- Modular architecture suitable for open-source contribution.
+
 ### Real-time vs Prediction Refresh
 
 - **Market data refresh**: Fetches latest prices from the data provider
 - **Prediction refresh**: Recomputes ML models and optimized weights when new data arrives
-- First version uses manual refresh button + optional 45-second polling (no WebSockets)
+- For hackathon purposes, the first version uses manual refresh and optional polling instead of WebSockets.
 
 ## Tech Stack
 
@@ -63,8 +81,7 @@ ai-portfolio-optimizer/
 ├── frontend/
 │   └── src/components/            # Dashboard UI components
 ├── sample_data/                   # Auto-generated CSV fallback
-├── scripts/
-└── notebooks/                     # Optional experiments
+└── scripts/
 ```
 
 ## Setup
@@ -93,7 +110,7 @@ pip install -r requirements.txt
 pip install -r requirements-ml.txt
 
 cp .env.example .env
-# Edit .env — set ALPHA_VANTAGE_API_KEY or use MARKET_DATA_PROVIDER=sample
+
 python run.py
 ```
 
@@ -131,40 +148,40 @@ Sample CSV files are auto-generated on first backend startup for: AAPL, MSFT, GO
 | POST | `/api/optimize` | Portfolio optimization |
 | POST | `/api/full-analysis` | Complete pipeline (dashboard) |
 
-## Confidence Scores
 
-Confidence values are **practical heuristic scores**, not strict statistical confidence intervals:
+## Output format
 
-- **Regression**: Derived from test-set MAE and prediction signal strength
-- **LSTM**: Based on predicted return magnitude vs recent volatility
-- **Ensemble**: Average of component model scores
+FinOptima produces:
+- Predicted returns for each asset.
+- Trend signals such as upward, downward, or neutral.
+- Confidence scores for predictions.
+- Cluster labels for similar stocks.
+- Portfolio weights and risk metrics.
+
+## Hackathon value
+
+This project is a strong hackathon submission because it combines:
+- AI/ML
+- Financial analytics.
+- Real-world usability.
+- Open-source extensibility.
+- A visually appealing frontend demo.
 
 ## Limitations
 
-- **API rate limits**: Alpha Vantage free tier allows ~25 requests/day; use sample mode for demos
-- **Model uncertainty**: ML predictions are educational demonstrations, not financial advice
-- **LSTM training**: Can be slow on first run; disable with `ENABLE_LSTM=false` for faster demos
-- **No WebSockets**: Real-time updates use polling (30–60s) in v1
-- **Long-only**: Portfolio optimization does not support short positions
+- Free API tiers may have request limits.
+- Predictions are educational and not financial advice.
+- LSTM training can be disabled for faster demos.
+- Real-time updates use polling in the first version.
 
-## Future Scope
-
-- WebSocket streaming for live prices
-- Additional data providers (Yahoo Finance, Polygon.io)
-- PostgreSQL for historical cache and user portfolios
-- User authentication and saved portfolios
-- Backtesting module
-- Sentiment analysis from news feeds
-- Docker deployment and cloud hosting
-
-## Academic Presentation Tips
-
-1. Start demo in **sample mode** to avoid API limits during presentation
-2. Show regression vs LSTM model comparison in API response (`model_comparison`)
-3. Explain clustering groups for diversification
-4. Highlight pluggable provider architecture for extensibility
-5. Discuss confidence scores as heuristics, not guarantees
+## Future scope
+- WebSocket-based live updates.
+- More data providers.
+- Saved portfolios and user accounts.
+- Backtesting module.
+- Sentiment analysis from news.
+- Cloud deployment.
 
 ## License
 
-Educational use — Final Year Project.
+Built for OSC AI Build 1.0 as an open-source educational hackathon project.
