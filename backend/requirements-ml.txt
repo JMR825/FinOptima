@@ -1,3 +1,0 @@
-# Optional deep learning dependencies for LSTM module
--r requirements.txt
-tensorflow==2.18.0
