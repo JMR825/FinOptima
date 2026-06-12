@@ -13,6 +13,7 @@ node_modules/
 *.local
 notebooks/
 
+.env.production
 # IDE
 .vscode/
 .idea/
