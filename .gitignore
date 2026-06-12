@@ -27,5 +27,3 @@ Thumbs.db
 *.keras
 .ml_cache/
 
-# Sample data (auto-generated on startup)
-sample_data/*.csv
