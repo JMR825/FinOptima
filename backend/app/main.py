@@ -7,12 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
 from app.config import get_settings
-from app.utils.sample_data_generator import ensure_sample_data
+#from app.utils.sample_data_generator import ensure_sample_data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_sample_data()
+    
     yield
 
 
