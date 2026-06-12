@@ -3,8 +3,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+import os
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.api.routes import router
 from app.config import get_settings
 #from app.utils.sample_data_generator import ensure_sample_data
@@ -24,10 +24,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
+raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+cors_origins = [origin.strip() for origin in raw_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -80,7 +80,8 @@ def predict_symbol_lstm(df: pd.DataFrame) -> Optional[Dict]:
     tf.random.set_seed(42)
     model = Sequential(
             [
-                LSTM(32, input_shape=(SEQUENCE_LENGTH, 3)),
+              Input(shape=(SEQUENCE_LENGTH, 3)),
+                LSTM(32),
                 Dropout(0.2),
                 Dense(16, activation="relu"),
                 Dense(1),
