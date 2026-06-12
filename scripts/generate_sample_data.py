@@ -23,7 +23,7 @@ OUTPUT_DIR = Path(__file__).resolve().parents[1] / "live_data"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def fetch_live_stock_data(symbol: str, period: str = "1y") -> pd.DataFrame:
+def fetch_live_stock_data(symbol: str, period: str = "1d") -> pd.DataFrame:
   """Fetches real historical and real-time market data from Yahoo Finance."""
   print(f"Fetching live data for {symbol}...")
   # Download data via yfinance ticker object

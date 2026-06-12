@@ -3,12 +3,20 @@ import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAx
 export default function RiskReturnChart({ predictions = [], riskAnalysis }) {
   if (!predictions.length || !riskAnalysis) return null
 
-  const data = predictions.map((p) => ({
-    symbol: p.symbol,
-    return: +(p.predicted_return * 100).toFixed(3),
-    volatility: +((riskAnalysis.volatility?.[p.symbol] || 0) * 100).toFixed(2),
-    weight: (p.suggested_weight || 0) * 100,
-  }))
+  const data = predictions.map((p) => {
+    // Check where your backend format utility stores the asset metrics
+    const assetVolatility = 
+      riskAnalysis.volatility?.[p.symbol] ?? 
+      riskAnalysis.per_asset?.[p.symbol]?.volatility ?? 
+      0;
+
+    return {
+      symbol: p.symbol,
+      return: +(p.predicted_return * 100).toFixed(3),
+      volatility: +(assetVolatility * 100).toFixed(2),
+      weight: (p.suggested_weight || 0) * 100,
+    };
+  });
 
   return (
     <div className="card">
