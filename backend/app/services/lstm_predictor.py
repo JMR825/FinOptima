@@ -13,6 +13,7 @@ import os
 from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 logger = logging.getLogger(__name__)
 # Suppress TensorFlow verbose logging
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -61,7 +62,8 @@ def predict_symbol_lstm(df: pd.DataFrame) -> Optional[Dict]:
     from tensorflow.keras import Sequential
     from tensorflow.keras.layers import LSTM, Dense, Dropout
   except:
-    ImportError
+    logger.error("Required deep learning modules are missing.")
+    return None
   if len(df) < MIN_ROWS:
     return None
   try:
