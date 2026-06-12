@@ -159,21 +159,22 @@ async def full_analysis(request: FullAnalysisRequest):
     try:
         price_data, errors = await market_service.fetch_daily_prices(symbols)
         if not price_data:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=400,
-                detail={"message": "Could not fetch data for any symbol", "errors": errors},
+                content={"detail": {"message": "Could not fetch data for any symbol", "errors": errors}}
             )
+            
         if len(price_data) == 1:
-    single_sym = list(price_data.keys())
-    return JSONResponse(
-        status_code=400,
-        content={
-            "detail": {
-                "message": f"Optimization requires at least 2 tickers. Please add another stock alongside {single_sym} to optimize weights.",
-                "errors": errors
-            }
-        }
-    )
+            single_sym = list(price_data.keys())[0]
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": {
+                        "message": f"Optimization requires at least 2 tickers. Please add another stock alongside {single_sym} to optimize weights.",
+                        "errors": errors
+                    }
+                }
+            )
         live_prices, live_errors = await market_service.fetch_live_prices(symbols)
         processed = preprocess_all(price_data)
 
