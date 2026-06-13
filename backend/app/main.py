@@ -9,6 +9,8 @@ from app.api.routes import router
 from app.config import get_settings
 #from app.utils.sample_data_generator import ensure_sample_data
 from pathlib import Path
+import subprocess  # 🚨 MAKE SURE THIS LINE IS PRESENT
+import sys  
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
