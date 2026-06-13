@@ -11,7 +11,6 @@ from app.config import get_settings
 from pathlib import Path
 import subprocess  # 🚨 MAKE SURE THIS LINE IS PRESENT
 import sys  
->>>>>>> bcd5b3b25b2163280337cc55f4974cbe508e48e8
 
 #from app.utils.sample_data_generator import ensure_sample_data
 
