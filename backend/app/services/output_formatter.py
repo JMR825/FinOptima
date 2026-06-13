@@ -48,6 +48,7 @@ def build_full_response(
     model_comparison: dict,
     data_source: str,
     warnings: List[str],
+    mode: str = "daily",
     message: str = "Analysis complete",
 ) -> Dict[str, Any]:
     """Assemble the complete dashboard response."""
@@ -56,6 +57,7 @@ def build_full_response(
         "message": message,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "data_source": data_source,
+        "mode": mode,
         "live_prices": live_prices,
         "predictions": predictions,
         "portfolio": {

@@ -65,11 +65,15 @@ def correlation_matrix(processed: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str
 def portfolio_risk(
     weights: Dict[str, float],
     processed: Dict[str, pd.DataFrame],
+    period_type: str = "daily"
 ) -> Tuple[float, float, float, float]:
     """
     Compute expected portfolio return, volatility, Sharpe, and max drawdown
     using historical return covariance.
     """
+    if period_type == "intraday" and any(len(df) < 5 for df in processed.values()):
+        return 0.0, 0.0, 0.0, 0.0
+    
     symbols = [s for s in weights if weights[s] > 0 and s in processed]
     if not symbols:
         return 0.0, 0.0, 0.0, 0.0

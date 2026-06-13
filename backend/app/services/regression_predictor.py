@@ -18,7 +18,7 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-FEATURE_COLUMNS = [
+DAILY_FEATURE_COLUMNS = [
     "daily_return",
     "sma_5",
     "sma_10",
@@ -28,11 +28,26 @@ FEATURE_COLUMNS = [
     "momentum",
 ]
 
+INTRADAY_FEATURE_COLUMNS = [
+    "daily_return",
+    "sma_12",
+    "sma_24",
+    "sma_78",
+    "rolling_volatility",
+    "rsi",
+    "momentum",
+]
+
+
+def _feature_columns(period_type: str = "daily") -> list:
+    return INTRADAY_FEATURE_COLUMNS if period_type == "intraday" else DAILY_FEATURE_COLUMNS
+
 MIN_TRAINING_ROWS = 30
 
 
-def _prepare_features(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-    """Build feature matrix X and target y (next-day return)."""
+def _prepare_features(df: pd.DataFrame, period_type: str = "daily") -> Tuple[np.ndarray, np.ndarray]:
+    """Build feature matrix X and target y (next-period return)."""
+    cols = _feature_columns(period_type)
     data = df.copy()
     data["target"] = data["daily_return"].shift(-1)
     data = data.dropna()
@@ -40,7 +55,7 @@ def _prepare_features(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     if len(data) < MIN_TRAINING_ROWS:
         raise ValueError(f"Need at least {MIN_TRAINING_ROWS} rows for training")
 
-    X = data[FEATURE_COLUMNS].values
+    X = data[cols].values
     y = data["target"].values
     return X, y
 
@@ -64,9 +79,9 @@ def _confidence_from_error(mae: float, pred_return: float) -> float:
     return round((0.6 * error_score + 0.4 * signal_score) * 100, 1)
 
 
-def predict_symbol_regression(df: pd.DataFrame) -> Dict:
+def predict_symbol_regression(df: pd.DataFrame, period_type: str = "daily") -> Dict:
     """Train LR and RF models, compare, and return best prediction."""
-    X, y = _prepare_features(df)
+    X, y = _prepare_features(df, period_type=period_type)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     scaler = StandardScaler()
@@ -117,14 +132,16 @@ def predict_symbol_regression(df: pd.DataFrame) -> Dict:
     }
 
 
-def predict_all_regression(processed: Dict[str, pd.DataFrame]) -> Tuple[List[Dict], Dict]:
+def predict_all_regression(
+    processed: Dict[str, pd.DataFrame], period_type: str = "daily"
+) -> Tuple[List[Dict], Dict]:
     """Run regression predictions for all symbols."""
     predictions = []
     comparisons = {}
 
     for symbol, df in processed.items():
         try:
-            result = predict_symbol_regression(df)
+            result = predict_symbol_regression(df, period_type=period_type)
             predictions.append(
                 {
                     "symbol": symbol,

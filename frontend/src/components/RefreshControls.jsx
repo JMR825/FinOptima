@@ -1,8 +1,8 @@
-export default function RefreshControls({ autoRefresh, onAutoRefreshChange, onRefresh, loading, intervalSec = 45 }) {
+export default function RefreshControls({ autoRefresh, onAutoRefreshChange, onRefresh, loading, intervalSec = 45, mode = 'daily' }) {
   return (
     <div className="card flex flex-wrap items-center gap-4">
       <button onClick={onRefresh} className="btn-primary" disabled={loading}>
-        {loading ? 'Refreshing...' : 'Refresh Data & Predictions'}
+        {loading ? 'Refreshing...' : 'Refresh Analysis'}
       </button>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input
@@ -14,7 +14,9 @@ export default function RefreshControls({ autoRefresh, onAutoRefreshChange, onRe
         Auto-refresh every {intervalSec}s
       </label>
       <span className="text-xs text-slate-500">
-        Market prices and predictions update separately on each refresh cycle
+        {mode === 'intraday'
+          ? 'Intraday mode refreshes more frequently for live-style updates'
+          : 'Trading day mode uses cached daily bars with hourly refresh'}
       </span>
     </div>
   )

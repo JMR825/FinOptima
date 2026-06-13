@@ -2,7 +2,8 @@
 Data preprocessing pipeline for stock price time series.
 
 Cleans missing values, sorts chronologically, and engineers features
-used by regression, clustering, and LSTM modules.
+used by regression, clustering, and LSTM modules. Supports both Daily 
+and Intraday frequency tracking loops.
 """
 
 from __future__ import annotations
@@ -12,18 +13,23 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
+SEQUENCE_LENGTH = 20
+MIN_ROWS = 40
+
 
 def clean_price_data(df: pd.DataFrame) -> pd.DataFrame:
     """Remove missing values and ensure chronological order."""
     data = df.copy()
     data = data.dropna(subset=["close"])
+    
+    # Safely sort string dates or datetime string intervals chronologically
     data = data.sort_values("date").reset_index(drop=True)
     data["close"] = data["close"].astype(float)
     return data
 
 
 def add_returns(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate daily log and simple returns."""
+    """Calculate periodic log and simple returns."""
     data = df.copy()
     data["daily_return"] = data["close"].pct_change()
     data["log_return"] = np.log(data["close"] / data["close"].shift(1))
@@ -39,7 +45,7 @@ def add_moving_averages(df: pd.DataFrame, windows: tuple = (5, 10, 20)) -> pd.Da
 
 
 def add_rolling_volatility(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
-    """Rolling standard deviation of daily returns."""
+    """Rolling standard deviation of returns."""
     data = df.copy()
     data["rolling_volatility"] = data["daily_return"].rolling(window=window, min_periods=5).std()
     return data
@@ -66,21 +72,38 @@ def add_momentum(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     return data
 
 
-def preprocess_symbol_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Full preprocessing pipeline for a single symbol."""
+def preprocess_symbol_data(df: pd.DataFrame, period_type: str = "daily") -> pd.DataFrame:
+    """Full preprocessing pipeline for a single symbol with adaptive windows."""
     data = clean_price_data(df)
     data = add_returns(data)
-    data = add_moving_averages(data)
-    data = add_rolling_volatility(data)
-    data = add_rsi(data)
-    data = add_momentum(data)
+    
+    # ⚡ OPTIMIZATION: Shift window limits depending on execution frequency
+    if period_type == "intraday":
+        # Intraday 5-min tracking benefits from larger lookbacks (e.g. 12 bars = 1 hour)
+        sma_windows = (12, 24, 78)  # 78 bars equals roughly 1 full trading day
+        vol_window = 24
+        rsi_period = 14
+        mom_window = 12
+    else:
+        # Standard daily layout parameters matching original setup
+        sma_windows = (5, 10, 20)
+        vol_window = 20
+        rsi_period = 14
+        mom_window = 10
+
+    data = add_moving_averages(data, windows=sma_windows)
+    data = add_rolling_volatility(data, window=vol_window)
+    data = add_rsi(data, period=rsi_period)
+    data = add_momentum(data, window=mom_window)
+    
+    # Backfill or clean drop edge values safely
     data = data.dropna().reset_index(drop=True)
     return data
 
 
-def preprocess_all(price_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-    """Preprocess price data for all symbols."""
-    return {symbol: preprocess_symbol_data(df) for symbol, df in price_data.items()}
+def preprocess_all(price_data: Dict[str, pd.DataFrame], period_type: str = "daily") -> Dict[str, pd.DataFrame]:
+    """Preprocess price data for all symbols, routing period context."""
+    return {symbol: preprocess_symbol_data(df, period_type=period_type) for symbol, df in price_data.items()}
 
 
 def build_feature_matrix(processed: Dict[str, pd.DataFrame]) -> pd.DataFrame:

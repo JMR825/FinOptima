@@ -1,6 +1,18 @@
-export default function MarketStatusBar({ dataSource, timestamp, warnings = [] }) {
+export default function MarketStatusBar({ dataSource, timestamp, warnings = [], mode = 'daily' }) {
+  const modeLabel = mode === 'intraday' ? 'Intraday (Live)' : 'Trading Day (Daily)'
+
   return (
     <div className="card flex flex-wrap items-center gap-4 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-slate-400">Mode:</span>
+        <span
+          className={`font-medium px-2 py-0.5 rounded text-xs ${
+            mode === 'intraday' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+          }`}
+        >
+          {modeLabel}
+        </span>
+      </div>
       <div className="flex items-center gap-2">
         <span className="text-slate-400">Data source:</span>
         <span className="font-medium text-blue-400 capitalize">{dataSource?.replace('_', ' ') || '—'}</span>

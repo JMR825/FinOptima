@@ -5,42 +5,55 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-class StockInput(BaseModel):
+DashboardMode = Literal["daily", "intraday"]
+
+
+class MarketDataOptions(BaseModel):
+    """Shared market data parameters for all analysis endpoints."""
+
+    mode: DashboardMode = Field("daily", description="Dashboard mode: daily (Trading Day) or intraday")
+    interval: Optional[str] = Field(None, description="yfinance interval override (e.g. 5m, 15m, 1h, 1d)")
+    period: Optional[str] = Field(None, description="yfinance period override (e.g. 1y, 5d, 1mo)")
+    refresh_cache: bool = Field(False, description="Force re-download from yfinance even if cache exists")
+
+
+class LiveDataRequest(MarketDataOptions):
+    symbols: List[str] = Field(..., min_length=1, max_length=10)
+
+
+class AnalyzeRequest(MarketDataOptions):
+    symbols: List[str] = Field(..., min_length=1, max_length=10)
+    period_type: DashboardMode = "daily"  # backward compat alias for mode
+
+
+class PredictRequest(MarketDataOptions):
+    symbols: List[str] = Field(..., min_length=1, max_length=10)
+    prediction_mode: Literal["regression", "lstm", "ensemble"] = "ensemble"
+    enable_lstm: Optional[bool] = None
+    period_type: DashboardMode = "daily"
+
+
+class ClusterRequest(MarketDataOptions):
+    symbols: List[str] = Field(..., min_length=1, max_length=10)
+    period_type: DashboardMode = "daily"
+
+
+class OptimizeRequest(MarketDataOptions):
     symbols: List[str] = Field(..., min_length=1, max_length=10)
     budget: float = Field(10000, gt=0)
     risk_preference: Literal["low", "medium", "high"] = "medium"
-    prediction_mode: Literal["regression", "lstm", "ensemble"] = "ensemble"
     optimization_goal: Literal["max_sharpe", "min_volatility"] = "max_sharpe"
-    enable_lstm: Optional[bool] = None
+    period_type: DashboardMode = "daily"
 
 
-class LiveDataRequest(BaseModel):
-    symbols: List[str] = Field(..., min_length=1, max_length=10)
-
-
-class AnalyzeRequest(BaseModel):
-    symbols: List[str] = Field(..., min_length=1, max_length=10)
-
-
-class PredictRequest(BaseModel):
-    symbols: List[str] = Field(..., min_length=1, max_length=10)
-    prediction_mode: Literal["regression", "lstm", "ensemble"] = "ensemble"
-    enable_lstm: Optional[bool] = None
-
-
-class ClusterRequest(BaseModel):
-    symbols: List[str] = Field(..., min_length=1, max_length=10)
-
-
-class OptimizeRequest(BaseModel):
+class FullAnalysisRequest(MarketDataOptions):
     symbols: List[str] = Field(..., min_length=1, max_length=10)
     budget: float = Field(10000, gt=0)
     risk_preference: Literal["low", "medium", "high"] = "medium"
     optimization_goal: Literal["max_sharpe", "min_volatility"] = "max_sharpe"
-
-
-class FullAnalysisRequest(StockInput):
-    refresh_predictions: bool = True
+    prediction_mode: Literal["regression", "lstm", "ensemble"] = "ensemble"
+    enable_lstm: bool = True
+    period_type: DashboardMode = "daily"
 
 
 class PricePoint(BaseModel):
@@ -91,6 +104,7 @@ class FullAnalysisResponse(BaseModel):
     message: str
     timestamp: str
     data_source: str
+    mode: str
     live_prices: List[LivePrice]
     predictions: List[StockPrediction]
     portfolio: PortfolioMetrics

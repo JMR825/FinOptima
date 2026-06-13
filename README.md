@@ -99,6 +99,7 @@ ai-portfolio-optimizer/
 ```bash
 cd backend
 python -m venv venv
+uvicorn app.main:app --reload --port 8000
 
 # Windows
 venv\Scripts\activate

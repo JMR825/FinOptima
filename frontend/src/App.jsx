@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import AllocationChart from './components/AllocationChart'
 import ClusterView from './components/ClusterView'
 import CorrelationMatrix from './components/CorrelationMatrix'
@@ -22,9 +22,10 @@ const DEFAULT_FORM = {
   risk_preference: 'medium',
   prediction_mode: 'ensemble',
   optimization_goal: 'max_sharpe',
+  mode: 'daily',
+  interval: '5m',
+  refresh_cache: false,
 }
-
-const REFRESH_INTERVAL = 45000
 
 export default function App() {
   const [form, setForm] = useState(DEFAULT_FORM)
@@ -34,19 +35,33 @@ export default function App() {
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [hasRun, setHasRun] = useState(false)
 
+  const refreshInterval = useMemo(
+    () => (form.mode === 'intraday' ? 30000 : 45000),
+    [form.mode]
+  )
+
   const runAnalysis = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const symbols = form.symbols.split(',').map((s) => s.trim()).filter(Boolean)
-      const result = await fetchFullAnalysis({
+      if (!symbols.length) {
+        throw new Error('Please enter at least one ticker symbol')
+      }
+      const payload = {
         symbols,
         budget: Number(form.budget),
         risk_preference: form.risk_preference,
         prediction_mode: form.prediction_mode,
         optimization_goal: form.optimization_goal,
-        refresh_predictions: true,
-      })
+        mode: form.mode,
+        period_type: form.mode,
+        refresh_cache: form.refresh_cache,
+      }
+      if (form.mode === 'intraday') {
+        payload.interval = form.interval
+      }
+      const result = await fetchFullAnalysis(payload)
       setData(result)
       setHasRun(true)
     } catch (err) {
@@ -56,7 +71,7 @@ export default function App() {
     }
   }, [form])
 
-  useAutoRefresh(autoRefresh && hasRun, REFRESH_INTERVAL, runAnalysis)
+  useAutoRefresh(autoRefresh && hasRun, refreshInterval, runAnalysis)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -65,7 +80,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <Header />
+      <Header mode={form.mode} />
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start sticky top-24 ">
           <div className="lg:col-span-1 items-start sticky top-24">
@@ -78,11 +93,12 @@ export default function App() {
                 onAutoRefreshChange={setAutoRefresh}
                 onRefresh={runAnalysis}
                 loading={loading}
-                intervalSec={REFRESH_INTERVAL / 1000}
+                intervalSec={refreshInterval / 1000}
+                mode={form.mode}
               />
             )}
 
-            {loading && !data && <LoadingState />}
+            {loading && !data && <LoadingState mode={form.mode} />}
             {error && !loading && <ErrorState error={error} onRetry={runAnalysis} />}
 
             {data && (
@@ -91,6 +107,7 @@ export default function App() {
                   dataSource={data.data_source}
                   timestamp={data.timestamp}
                   warnings={data.warnings}
+                  mode={data.mode}
                 />
                 <LivePriceCards livePrices={data.live_prices} />
                 <PredictionSummaryCards portfolio={data.portfolio} />
@@ -98,7 +115,7 @@ export default function App() {
                   <AllocationChart weights={data.portfolio?.weights} />
                   <RiskReturnChart predictions={data.predictions} riskAnalysis={data.risk_analysis} />
                 </div>
-                <PriceTrendChart priceHistory={data.price_history} />
+                <PriceTrendChart priceHistory={data.price_history} mode={data.mode} />
                 <ClusterView clusterSummary={data.cluster_summary} />
                 <CorrelationMatrix correlationMatrix={data.risk_analysis?.correlation_matrix} />
                 <PortfolioTable predictions={data.predictions} />
@@ -108,7 +125,9 @@ export default function App() {
             {!hasRun && !loading && !error && (
               <div className="card text-center py-16 text-slate-400">
                 <p className="text-lg mb-2">Welcome to the AI Portfolio Optimizer</p>
-                <p className="text-sm">Enter stock symbols and click &quot;Run Full Analysis&quot; to begin.</p>
+                <p className="text-sm">
+                  Enter one or more tickers, choose Intraday or Trading Day mode, and click &quot;Run Full Analysis&quot;.
+                </p>
               </div>
             )}
           </div>
