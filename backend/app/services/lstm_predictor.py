@@ -97,6 +97,7 @@ def predict_symbol_lstm(df: pd.DataFrame, period_type: str = "daily") -> Optiona
         model.fit(X_train_s, y_train, epochs=epochs, batch_size=batch_size, verbose=0, validation_split=0.1)
         
         # Safe 1D matrix tracking extraction layout
+        X_latest_tensor = tf.convert_to_tensor(X_latest, dtype=tf.float32)
         pred_raw = model.predict(X_latest, verbose=0)
         pred_return = float(pred_raw[0][0]) if hasattr(pred_raw, "ndim") and pred_raw.ndim > 1 else float(pred_raw)
         
@@ -110,6 +111,10 @@ def predict_symbol_lstm(df: pd.DataFrame, period_type: str = "daily") -> Optiona
         }
     except Exception as exc:
         logger.error("LSTM training failed: %s", str(exc))
+        try:
+            tf.keras.backend.clear_session()
+        except Exception:
+            pass
         return None
 
 
