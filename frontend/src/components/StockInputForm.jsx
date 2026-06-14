@@ -99,7 +99,7 @@ export default function StockInputForm({ form, onChange, onSubmit, loading }) {
           onChange={handleChange('refresh_cache')}
           className="rounded border-slate-600"
         />
-        Force refresh from yfinance (bypass cache)
+        refreshs from yfinance
       </label>
 
       <button type="submit" className="btn-primary w-full" disabled={loading}>

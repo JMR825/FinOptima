@@ -15,7 +15,7 @@ export default function Header({ mode = 'daily' }) {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">AI Portfolio Optimizer</h1>
+            <h1 className="text-xl font-bold text-white">FinOptima</h1>
             <p className="text-sm text-slate-400">
               yfinance live data · ML predictions · Portfolio optimization
             </p>
