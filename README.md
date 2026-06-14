@@ -125,15 +125,50 @@ npm run dev
 
 Dashboard at `http://localhost:5173`.
 
-### Offline Demo (No API Key)
+## ⚡ Performance Note: Local vs. Cloud Deployment
 
-Set in `backend/.env`:
+* **Local Workspace (Recommended for Evaluators)**: Executes instantly (~5 to 10 seconds). It leverages your local computer's unthrottled CPU cores and high-speed memory to train model weight matrices in eager memory space rapidly.
+* **Live Web Instance (https://onrender.com)**: Processes requests within ~2 minutes. Free and basic cloud instances restrict CPU thread ceilings and lack hardware acceleration drivers, meaning sequential training loops experience standard virtualization latency.
 
+---
+
+## Local Installation & Setup Guide
+
+To evaluate the high-performance execution of the full optimization engine locally, spin up the modules using these terminal configurations:
+
+### 1. Backend Server Configuration (FastAPI)
+Open your terminal inside the root project directory and execute:
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create and trigger your Python virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+
+# Install required numerical and ML packages
+pip install -r requirements.txt
+
+# Launch the Uvicorn web server
+uvicorn app.main:app --reload --port 8000
 ```
-MARKET_DATA_PROVIDER=sample
-```
+Your local API endpoints documentation framework will become available at `http://localhost:8000/docs`.
 
-Sample CSV files are auto-generated on first backend startup for: AAPL, MSFT, GOOGL, AMZN, TSLA, META, NVDA, JPM.
+### 2. Frontend Interface Configuration (React + Vite)
+Open a separate terminal window and launch the UI engine:
+```bash
+# Navigate to frontend directory
+cd ../frontend
+
+# Install modern component and utility dependencies
+npm install
+
+# Run the local Vite dev server
+npm run dev
+```
+Open your browser and navigate to `http://localhost:5173/` to view the interactive live dashboard!
+
+---
 
 ## API Endpoints
 
