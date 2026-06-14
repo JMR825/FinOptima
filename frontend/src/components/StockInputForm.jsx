@@ -53,7 +53,7 @@ export default function StockInputForm({ form, onChange, onSubmit, loading }) {
           onChange={handleChange('symbols')}
           placeholder="AAPL or AAPL, MSFT, GOOGL"
         />
-        <p className="text-xs text-slate-500 mt-1">Enter one or more tickers — missing data is fetched automatically.</p>
+        <p className="text-xs text-slate-500 mt-1">Enter one or more tickers — data is fetched automatically.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

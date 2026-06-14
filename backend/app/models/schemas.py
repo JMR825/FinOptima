@@ -1,9 +1,7 @@
 """Pydantic request/response models for the portfolio optimization API."""
 
 from typing import Any, Dict, List, Literal, Optional
-
 from pydantic import BaseModel, Field
-
 
 DashboardMode = Literal["daily", "intraday"]
 

@@ -17,7 +17,6 @@ from typing import Dict, List, Optional, Tuple
 import sys,os
 import pandas as pd
 import yfinance as yf
-
 from app.config import get_settings
 from app.utils.exceptions import InvalidSymbolError
 

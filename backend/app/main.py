@@ -2,10 +2,8 @@
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.api.routes import router
 from app.config import get_settings
 from pathlib import Path

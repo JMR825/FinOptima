@@ -5,7 +5,6 @@ Run manually or at deploy time. The backend also fetches missing tickers on dema
 """
 
 from pathlib import Path
-
 import pandas as pd
 import yfinance as yf
 

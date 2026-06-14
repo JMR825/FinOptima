@@ -1,6 +1,6 @@
 # FinOptima
 
-##AI-Powered Portfolio Optimization System
+## AI-Powered Portfolio Optimization System
 
 FinOptima is an AI-driven financial analytics platform built for OSC AI Build 1.0, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
 
@@ -19,7 +19,6 @@ This hackathon project focuses on building a practical AI system that is:
 ## Objectives
 
 - Integrate live and historical stock data using a pluggable market data provider.
-- Support offline demo mode using synthetic sample CSV files.
 - Preprocess time-series data with returns, moving averages, volatility, and RSI.
 - Predict short-term returns using regression-based models and optional LSTM.
 - Cluster stocks for diversification insights.
@@ -28,7 +27,7 @@ This hackathon project focuses on building a practical AI system that is:
 
 ## Methodology
 
-1. **Data ingestion** — Pluggable market data provider (Alpha Vantage default, sample CSV fallback)
+1. **Data ingestion** — Pluggable market data provider (using yfinance)
 2. **Preprocessing** — Clean, sort, and engineer features from OHLCV data
 3. **Regression** — Linear Regression + Random Forest predict next-period returns; best model selected by MAE
 4. **LSTM** — Sequence model on closing price / return / RSI windows (optional, lightweight)
@@ -57,8 +56,9 @@ This hackathon project focuses on building a practical AI system that is:
 |-------|-----------|
 | Frontend | React, Vite, Tailwind CSS, Recharts |
 | Backend | FastAPI, Pydantic |
-| ML/Data | pandas, numpy, scikit-learn, scipy, TensorFlow/Keras |
-| Market Data | Alpha Vantage API (swappable provider architecture) |
+| ML/Data | pandas, numpy, scikit-learn, scipy, TensorFlow/Keras, tensorflow |
+| Market Data | yfinance |
+| Development(IDE) | Cursor AI, VS Code  |
 
 ## Project Structure
 
@@ -82,7 +82,7 @@ ai-portfolio-optimizer/
 │   └── run.py
 ├── frontend/
 │   └── src/components/            # Dashboard UI components
-├── sample_data/                   # Auto-generated CSV fallback
+├── sample_data/                   # Auto-generated CSV datasets
 └── scripts/
 ```
 
@@ -92,25 +92,21 @@ ai-portfolio-optimizer/
 
 - Python 3.10+
 - Node.js 18+
-- Alpha Vantage API key (free tier: https://www.alphavantage.co/support/#api-key)
 
 ### Backend
 
 ```bash
-cd backend
-python -m venv venv
-uvicorn app.main:app --reload --port 8000
 
 # Windows
+
+cd backend
 venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000
 
 # macOS/Linux
 source venv/bin/activate
 
 pip install -r requirements.txt
-
-# Optional: enable LSTM predictions (large download)
-pip install -r requirements-ml.txt
 
 cp .env.example .env
 
@@ -178,6 +174,7 @@ This project is a strong hackathon submission because it combines:
 - Real-time updates use polling in the first version.
 
 ## Future scope
+
 - WebSocket-based live updates.
 - More data providers.
 - Saved portfolios and user accounts.
@@ -185,6 +182,15 @@ This project is a strong hackathon submission because it combines:
 - Sentiment analysis from news.
 - Cloud deployment.
 
+## AI Disclosure & Acknowledgments
+
+FinOptima was developed efficiently during the hackathon using AI pair-programming tools (e.g., Cursor, Perplexity) for code generation, boilerplate setup, and UI styling adjustments. All core financial logic, ML routing, and system architecture were designed and engineered by the team.
+
 ## License
 
 Built for OSC AI Build 1.0 as an open-source educational hackathon project.
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+*Disclaimer: FinOptima is an educational hackathon project and does not constitute formal financial or investment advice.*

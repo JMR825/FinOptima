@@ -6,9 +6,7 @@ long-only constraints (weights sum to 1).
 """
 
 from __future__ import annotations
-
 from typing import Dict, List, Literal, Tuple
-
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize

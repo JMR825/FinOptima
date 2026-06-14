@@ -5,12 +5,9 @@ Computes volatility, Sharpe ratio, maximum drawdown, and correlation matrix.
 """
 
 from __future__ import annotations
-
 from typing import Dict, Tuple
-
 import numpy as np
 import pandas as pd
-
 
 TRADING_DAYS = 252
 RISK_FREE_RATE = 0.02
