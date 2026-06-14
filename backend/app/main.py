@@ -9,6 +9,13 @@ from app.config import get_settings
 from pathlib import Path
 import subprocess  # 🚨 MAKE SURE THIS LINE IS PRESENT
 import sys  
+import os
+
+# Mutes TensorFlow's native C++ information and warning logs
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
+# Directs TensorFlow to pretend there are no active local graphics cards
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 #from app.utils.sample_data_generator import ensure_sample_data
 
