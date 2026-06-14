@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-
+import sys,os
 import pandas as pd
 import yfinance as yf
 
@@ -23,8 +23,6 @@ from app.utils.exceptions import InvalidSymbolError
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-CACHE_DIR = PROJECT_ROOT / "live_data"
 
 OHLCV_COLUMNS = ["date", "open", "high", "low", "close", "volume"]
 
@@ -72,53 +70,10 @@ class MarketDataProvider(ABC):
 class YFinanceDataProvider(MarketDataProvider):
     """yfinance fetcher with local disk cache."""
 
-    def __init__(self, cache_ttl_seconds: int = 45):
-        self.cache_ttl_seconds = cache_ttl_seconds
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        (CACHE_DIR / "daily").mkdir(parents=True, exist_ok=True)
-        (CACHE_DIR / "intraday").mkdir(parents=True, exist_ok=True)
 
     @property
     def source_name(self) -> str:
         return "yfinance"
-
-    def _cache_path(self, symbol: str, mode: str, interval: str) -> Path:
-        sym = symbol.upper()
-        mode = _normalize_mode(mode)
-        if mode == "daily":
-            return CACHE_DIR / "daily" / f"{sym}.csv"
-        return CACHE_DIR / "intraday" / interval / f"{sym}.csv"
-
-    def _legacy_cache_path(self, symbol: str, mode: str) -> Path:
-        """Backward-compatible path before interval subfolders."""
-        sym = symbol.upper()
-        return CACHE_DIR / mode / f"{sym}.csv"
-
-    def _is_stale(self, path: Path, mode: str) -> bool:
-        if not path.exists():
-            return True
-        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-        age = (datetime.now(timezone.utc) - mtime).total_seconds()
-        if _normalize_mode(mode) == "daily":
-            return age > 3600  # refresh daily cache hourly
-        return age > self.cache_ttl_seconds
-
-    def _load_cache(self, path: Path) -> Optional[pd.DataFrame]:
-        if not path.exists():
-            return None
-        try:
-            df = pd.read_csv(path)
-            for col in OHLCV_COLUMNS:
-                if col not in df.columns:
-                    return None
-            return df.sort_values("date").reset_index(drop=True)
-        except Exception as exc:
-            logger.warning("Failed to read cache %s: %s", path, exc)
-            return None
-
-    def _save_cache(self, path: Path, df: pd.DataFrame) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(path, index=False)
 
     def _download_sync(self, symbol: str, period: str, interval: str, mode: str) -> pd.DataFrame:
         ticker = yf.Ticker(symbol)
@@ -164,39 +119,14 @@ class YFinanceDataProvider(MarketDataProvider):
         sym = symbol.upper().strip()
         mode = _normalize_mode(mode)
         resolved_period, resolved_interval = _resolve_params(mode, interval, period)
-        cache_path = self._cache_path(sym, mode, resolved_interval)
         
-        if not cache_path.exists():
-            logger.info(f"💾 Ticker dataset for {sym} not found in local cache. Generating new dataset on-demand...")
-            refresh = True  # Forces the system to ignore cache logic and pull fresh data
-
-        if not refresh:
-            cached = self._load_cache(cache_path)
-            if cached is not None and not self._is_stale(cache_path, mode):
-                return cached
-            # Try legacy path for intraday (pre-interval subfolder)
-            if mode == "intraday":
-                legacy = self._legacy_cache_path(sym, mode)
-                cached = self._load_cache(legacy)
-                if cached is not None and not self._is_stale(legacy, mode):
-                    self._save_cache(cache_path, cached)
-                    return cached
-
         try:
-            logger.info(f"📡 Fetching live rows from yfinance to write {sym}.csv...")
-            df = await asyncio.to_thread(
+            logger.info(f"📡 Requesting 100%% live market stream from yfinance for {sym}...")
+            return await asyncio.to_thread(
                 self._download_sync, sym, resolved_period, resolved_interval, mode
             )
-            self._save_cache(cache_path, df)
-            logger.info(f"✅ New dataset successfully created on disk at: {cache_path}")
-            return df
-        except InvalidSymbolError:
-            raise
         except Exception as exc:
-            logger.error("yfinance download failed for %s: %s", sym, exc)
-            cached = self._load_cache(cache_path)
-            if cached is not None:
-                return cached
+            logger.error("Real-time stream download failed for %s: %s", sym, exc)
             raise InvalidSymbolError(sym) from exc
 
 
@@ -205,7 +135,7 @@ class MarketDataService:
 
     def __init__(self):
         self.settings = get_settings()
-        self._provider = YFinanceDataProvider(cache_ttl_seconds=self.settings.default_refresh_interval)
+        self._provider = YFinanceDataProvider()
         self._warnings: List[str] = []
 
     @property
