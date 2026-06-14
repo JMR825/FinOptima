@@ -101,7 +101,7 @@ def predict_symbol_lstm(df: pd.DataFrame, period_type: str = "daily") -> Optiona
         pred_return = float(pred_raw[0][0]) if hasattr(pred_raw, "ndim") and pred_raw.ndim > 1 else float(pred_raw)
         
         recent_vol = float(df["daily_return"].tail(seq_length).std())
-        
+        tf.keras.backend.clear_session()
         return {
             "predicted_return": round(pred_return, 6),
             "trend": _trend_from_return(pred_return),
