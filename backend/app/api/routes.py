@@ -12,6 +12,8 @@ Endpoints:
 """
 
 from __future__ import annotations
+
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -25,7 +27,7 @@ from app.models.schemas import (
     PredictRequest,
 )
 from app.services.clustering import apply_cluster_labels, cluster_stocks
-from app.services.lstm_predictor import ensemble_predictions, predict_all_lstm
+from app.services.lstm_predictor import ensemble_predictions, predict_all_lstm, tensorflow_available
 from app.services.market_data_service import MarketDataService
 from app.services.optimizer import optimize_portfolio
 from app.services.output_formatter import (
@@ -40,6 +42,44 @@ from app.utils.exceptions import PortfolioOptimizerError
 
 router = APIRouter(prefix="/api")
 market_service = MarketDataService()
+logger = logging.getLogger(__name__)
+
+
+def _resolve_predictions(
+    reg_preds: List[dict],
+    processed: dict,
+    mode: str,
+    prediction_mode: str,
+    enable_lstm: bool,
+    warnings: List[str],
+) -> List[dict]:
+    """Run LSTM/ensemble prediction with regression fallback and warning surfacing."""
+    if prediction_mode not in ("lstm", "ensemble") or not enable_lstm:
+        return reg_preds
+
+    if not tensorflow_available():
+        warnings.append(
+            "LSTM disabled: TensorFlow is unavailable in this Python environment. "
+            "Activate backend/venv and restart uvicorn on port 8000."
+        )
+        return reg_preds
+
+    try:
+        lstm_preds = predict_all_lstm(processed, period_type=mode)
+    except Exception as exc:
+        logger.exception("LSTM batch prediction failed")
+        warnings.append(f"LSTM failed ({exc}). Using regression fallback.")
+        return reg_preds
+
+    if not lstm_preds:
+        warnings.append("LSTM returned no predictions. Using regression fallback.")
+        if prediction_mode == "lstm":
+            return reg_preds
+        return ensemble_predictions(reg_preds, lstm_preds)
+
+    if prediction_mode == "ensemble":
+        return ensemble_predictions(reg_preds, lstm_preds)
+    return lstm_preds
 
 
 def _resolve_mode(request) -> str:
@@ -86,6 +126,7 @@ async def health_check():
         "provider": "yfinance",
         "market_data_provider": settings.market_data_provider,
         "lstm_enabled": settings.enable_lstm,
+        "tensorflow_available": tensorflow_available(),
         "storage": "in-memory",
     }
 
@@ -152,21 +193,16 @@ async def predict(request: PredictRequest):
 
     reg_preds, model_comparison = predict_all_regression(processed, period_type=mode)
     enable_lstm = request.enable_lstm if request.enable_lstm is not None else settings.enable_lstm
-
-    if request.prediction_mode in ("lstm", "ensemble") and enable_lstm:
-        lstm_preds = predict_all_lstm(processed, period_type=mode)
-        if request.prediction_mode == "ensemble":
-            predictions = ensemble_predictions(reg_preds, lstm_preds)
-        else:
-            predictions = lstm_preds if lstm_preds else reg_preds
-    else:
-        predictions = reg_preds
+    route_warnings = list(market_service.warnings + errors)
+    predictions = _resolve_predictions(
+        reg_preds, processed, mode, request.prediction_mode, enable_lstm, route_warnings
+    )
 
     return {
         "predictions": predictions,
         "model_comparison": model_comparison,
         "mode": mode,
-        "warnings": market_service.warnings + errors,
+        "warnings": route_warnings,
     }
 
 
@@ -256,17 +292,10 @@ async def full_analysis(request: FullAnalysisRequest):
 
         reg_preds, model_comparison = predict_all_regression(processed, period_type=mode)
         enable_lstm = request.enable_lstm if request.enable_lstm is not None else settings.enable_lstm
-
-        if request.prediction_mode in ("lstm", "ensemble") and enable_lstm:
-            lstm_preds = predict_all_lstm(processed, period_type=mode)
-            if request.prediction_mode == "ensemble":
-                predictions = ensemble_predictions(reg_preds, lstm_preds)
-            elif lstm_preds:
-                predictions = lstm_preds
-            else:
-                predictions = reg_preds
-        else:
-            predictions = reg_preds
+        all_warnings = market_service.warnings + errors + live_errors
+        predictions = _resolve_predictions(
+            reg_preds, processed, mode, request.prediction_mode, enable_lstm, all_warnings
+        )
 
         label_map, cluster_summary = cluster_stocks(processed)
         predictions = apply_cluster_labels(predictions, label_map)
@@ -287,7 +316,6 @@ async def full_analysis(request: FullAnalysisRequest):
         risk_analysis = format_risk_analysis(per_asset, corr)
         price_history = format_price_history(price_data)
 
-        all_warnings = market_service.warnings + errors + live_errors
         if len(price_data) == 1:
             sym = list(price_data.keys())[0]
             all_warnings.append(

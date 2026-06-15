@@ -5,11 +5,33 @@ async function request(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   })
-  const data = await response.json()
+
+  const text = await response.text()
+  let data = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error(
+        `Server returned invalid JSON (${response.status}). Check that the backend is running on port 8000.`
+      )
+    }
+  }
+
   if (!response.ok) {
-    const message = data?.detail?.message || data?.message || 'Request failed'
+    const message =
+      data?.detail?.message ||
+      data?.message ||
+      (response.status === 500 && !text
+        ? 'Backend error with empty response. Activate backend/venv and restart uvicorn on port 8000.'
+        : `Request failed (${response.status})`)
     throw new Error(message)
   }
+
+  if (data === null) {
+    throw new Error('Server returned an empty response. Is the backend running on port 8000?')
+  }
+
   return data
 }
 
