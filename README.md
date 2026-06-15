@@ -2,133 +2,58 @@
 
 ## AI-Powered Portfolio Optimization System
 
-FinOptima is an AI-driven financial analytics platform built for OSC AI Build 1.0, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
+FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 1.0**, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
+
+---
+
+## Dashboard Showcase
+
+<!-- Add your application screenshots here. Recommended size: 1920x1080 ->
+### Main Analytics Interface
+![FinOptima Main Dashboard UI](docs/dashboard.png)
+
+### Asset Allocation Charting Panel
+![FinOptima Portfolio Weights and Recharts Panel](docs/allocation.png)
+
+---
 
 ## Abstract
 
 FinOptima is designed to showcase how open-source AI can be applied to financial decision-making. Users enter stock symbols and investment preferences, and the system fetches market data, engineers financial features, predicts short-term returns using machine learning, groups similar assets through clustering, and computes optimized portfolio allocations. The results are displayed in a clean, responsive dashboard with live prices, prediction signals, risk metrics, and allocation charts.
 
-## Why this project
+## Why This Project
 
 This hackathon project focuses on building a practical AI system that is:
-- Open-source friendly and easy to extend.
-- Demo-ready with live and offline data modes.
-- Technically strong with ML, optimization, and dashboard visualization.
-- Useful in the real world for portfolio analysis and risk-aware investment planning.
+* **Open-source friendly** and easy to extend.
+* **Demo-ready** with live and offline data modes.
+* **Technically strong** with ML, optimization, and dashboard visualization.
+* **Highly practical** for portfolio analysis and risk-aware investment planning.
 
 ## Objectives
 
-- Integrate live and historical stock data using a pluggable market data provider.
-- Preprocess time-series data with returns, moving averages, volatility, and RSI.
-- Predict short-term returns using regression-based models and optional LSTM.
-- Cluster stocks for diversification insights.
-- Optimize portfolio allocations for maximum Sharpe ratio or minimum volatility.
-- Present all results in a polished, hackathon-friendly dashboard.
+* Integrate live and historical stock data using a pluggable market data provider.
+* Preprocess time-series data with returns, moving averages, volatility, and RSI.
+* Predict short-term returns using regression-based models and an optimized batch LSTM.
+* Cluster stocks for diversification insights.
+* Optimize portfolio allocations for maximum Sharpe ratio or minimum volatility.
+* Present all results in a polished, hackathon-friendly dashboard.
 
 ## Methodology
 
-1. **Data ingestion** — Pluggable market data provider (using yfinance)
-2. **Preprocessing** — Clean, sort, and engineer features from OHLCV data
-3. **Regression** — Linear Regression + Random Forest predict next-period returns; best model selected by MAE
-4. **LSTM** — Sequence model on closing price / return / RSI windows (optional, lightweight)
-5. **Clustering** — KMeans on return, volatility, momentum, RSI features
-6. **Optimization** — SciPy SLSQP with long-only constraints (weights sum to 1)
-7. **Dashboard** — React + Recharts visualize allocation, risk-return scatter, trends, and tables
+1. **Data Ingestion** — Pluggable market data provider layer using `yfinance`.
+2. **Preprocessing** — Clean, sort, and engineer features from raw OHLCV data.
+3. **Regression Matrix** — Linear Regression + Random Forest predict next-period returns; best model selected by MAE.
+4. **Batch LSTM Engine** — Sequence model on closing price/return/RSI windows running 100% in-memory via concurrent batching.
+5. **Unsupervised Clustering** — KMeans clustering on return, volatility, momentum, and RSI features.
+6. **Mathematical Optimization** — SciPy SLSQP execution with long-only constraints (weights sum to 1).
+7. **Dashboard UI** — React + Recharts visualize allocation, risk-return scatter, trends, and data tables.
 
-## Hackathon highlights:
+---
 
-- Real-time market data integration.
-- ML-based return prediction.
-- Portfolio optimization engine.
-- Clustering for diversification analysis.
-- Offline demo mode for reliable presentations.
-- Modular architecture suitable for open-source contribution.
-
-### Real-time vs Prediction Refresh
-
-- **Market data refresh**: Fetches latest prices from the data provider
-- **Prediction refresh**: Recomputes ML models and optimized weights when new data arrives
-- For hackathon purposes, the first version uses manual refresh and optional polling instead of WebSockets.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React, Vite, Tailwind CSS, Recharts |
-| Backend | FastAPI, Pydantic |
-| ML/Data | pandas, numpy, scikit-learn, scipy, TensorFlow/Keras, tensorflow |
-| Market Data | yfinance |
-| Development(IDE) | Cursor AI, VS Code  |
-
-## Project Structure
-
-```
-ai-portfolio-optimizer/
-├── backend/
-│   ├── app/
-│   │   ├── api/routes.py          # REST endpoints
-│   │   ├── services/
-│   │   │   ├── market_data_service.py
-│   │   │   ├── preprocessing.py
-│   │   │   ├── regression_predictor.py
-│   │   │   ├── lstm_predictor.py
-│   │   │   ├── clustering.py
-│   │   │   ├── risk_metrics.py
-│   │   │   ├── optimizer.py
-│   │   │   └── output_formatter.py
-│   │   ├── models/schemas.py
-│   │   └── utils/
-│   ├── requirements.txt
-│   └── run.py
-├── frontend/
-│   └── src/components/            # Dashboard UI components
-├── sample_data/                   # Auto-generated CSV datasets
-└── scripts/
-```
-
-## Setup
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-
-### Backend
-
-```bash
-
-# Windows
-
-cd backend
-venv\Scripts\activate
-uvicorn app.main:app --reload --port 8000
-
-# macOS/Linux
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-cp .env.example .env
-
-python run.py
-```
-
-API runs at `http://localhost:8000` — docs at `/docs`.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Dashboard at `http://localhost:5173`.
-
-## ⚡ Performance Note: Local vs. Cloud Deployment
+## Performance Note: Local vs. Cloud Deployment
 
 * **Local Workspace (Recommended for Evaluators)**: Executes instantly (~5 to 10 seconds). It leverages your local computer's unthrottled CPU cores and high-speed memory to train model weight matrices in eager memory space rapidly.
-* **Live Web Instance (https://onrender.com)**: Processes requests within ~2 minutes. Free and basic cloud instances restrict CPU thread ceilings and lack hardware acceleration drivers, meaning sequential training loops experience standard virtualization latency.
+* **Live Web Instance (https://finoptima-gts9.onrender.com)**: Processes requests within ~20- 30 seconds. Powered by an optimized, non-persistent, 100% in-memory RAM vector data pool to comply with cloud free-tier memory resource limits.
 
 ---
 
@@ -166,9 +91,45 @@ npm install
 # Run the local Vite dev server
 npm run dev
 ```
-Open your browser and navigate to `http://localhost:5173/` to view the interactive live dashboard!
+Dashboard hosting will begin locally at `http://localhost:5173`.
 
 ---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React, Vite, Tailwind CSS, Recharts |
+| **Backend** | FastAPI, Pydantic |
+| **ML & Analytics Engine** | pandas, numpy, scikit-learn, scipy, TensorFlow/Keras |
+| **Market Data** | yfinance |
+| **Development (IDE)** | Cursor AI, VS Code |
+
+## Project Structure
+
+```
+ai-portfolio-optimizer/
+├── backend/
+│   ├── app/
+│   │   ├── api/routes.py          # REST endpoints
+│   │   ├── services/
+│   │   │   ├── market_data_service.py
+│   │   │   ├── preprocessing.py
+│   │   │   ├── regression_predictor.py
+│   │   │   ├── lstm_predictor.py
+│   │   │   ├── clustering.py
+│   │   │   ├── risk_metrics.py
+│   │   │   ├── optimizer.py
+│   │   │   └── output_formatter.py
+│   │   ├── models/schemas.py
+│   │   └── utils/
+│   ├── requirements.txt
+│   └── run.py
+├── frontend/
+│   └── src/components/            # Dashboard UI components
+├── sample_data/                   # Auto-generated CSV datasets
+└── scripts/
+```
 
 ## API Endpoints
 
@@ -203,10 +164,10 @@ This project is a strong hackathon submission because it combines:
 
 ## Limitations
 
-- Free API tiers may have request limits.
-- Predictions are educational and not financial advice.
-- LSTM training can be disabled for faster demos.
-- Real-time updates use polling in the first version.
+* Free API tiers may have sudden provider request rate limits.
+* Predictions are educational and do not constitute professional financial advice.
+* Real-time stream data sync updates use polling in the first version instead of WebSockets.
+
 
 ## Future scope
 
