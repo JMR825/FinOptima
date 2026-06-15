@@ -210,7 +210,7 @@ def predict_all_lstm(processed: Dict[str, pd.DataFrame], period_type: str = "dai
     try:
         X_all_train = np.vstack(X_train_parts)
         y_all_train = np.concatenate(y_train_parts)
-        X_eval_batch = np.vstack(eval_windows)
+        X_eval_batch = np.concatenate(eval_windows, axis=0)
 
         if not np.isfinite(X_all_train).all() or not np.isfinite(y_all_train).all():
             logger.error("Unified LSTM batch training failed: non-finite training values")
