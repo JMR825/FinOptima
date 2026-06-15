@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 import pandas as pd
 import yfinance as yf
-# Use your existing list of stock symbols
-# Expanded asset dictionary mapped by sector for testing optimization constraints
 SYMBOLS = [
     # original Tech/Finance
     "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "JPM",

@@ -1,0 +1,14 @@
+﻿python : Traceback (most recent call last):
+At C:\Users\janha\AppData\Local\Temp\ps-script-3f2d6545-2b24-4538-a9c4-efdde6fa375d.ps1:7 char:70
++ ... a\backend"; python -c "import sys; print(sys.executable); import tens ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 1, in <module>
+  File "C:\Users\janha\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\tensorflow\__init__.py", line 40, in <module>
+    from tensorflow.python import pywrap_tensorflow as _pywrap_tensorflow  # pylint: disable=unused-import
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'tensorflow.python'
+C:\Users\janha\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe

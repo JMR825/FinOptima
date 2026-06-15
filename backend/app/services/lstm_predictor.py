@@ -4,10 +4,6 @@ LSTM time-series predictor for stock price sequences.
 Unified multi-task batch engine: all tickers are trained and evaluated in a
 single model.fit() / forward-pass cycle — no per-symbol Python training loop.
 
-Optimized for Render free tier (512MB RAM, shared CPU):
-  - One shared lightweight LSTM compiled once per batch
-  - Functional tensor forward pass instead of model.predict()
-  - clear_session() once at the end of each batch pipeline
 """
 from __future__ import annotations
 
