@@ -1,30 +1,20 @@
 """FastAPI application entry point."""
 
 from contextlib import asynccontextmanager
-from pathlib import Path
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import router
-from app.config import get_settings
-from pathlib import Path
-import subprocess  # 🚨 MAKE SURE THIS LINE IS PRESENT
-import sys  
 import os
 
-# Mutes TensorFlow's native C++ information and warning logs
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-# Directs TensorFlow to pretend there are no active local graphics cards
+from app.api.routes import router
+from app.config import get_settings
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-#from app.utils.sample_data_generator import ensure_sample_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    cache_dir = Path(__file__).resolve().parents[2] / "live_data"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / "daily").mkdir(parents=True, exist_ok=True)
-    (cache_dir / "intraday").mkdir(parents=True, exist_ok=True)
     yield
 
 

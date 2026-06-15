@@ -63,9 +63,7 @@ async def _fetch_and_preprocess(
             status_code=400,
             content={"detail": {"message": "Optimization requires at least 2 tickers. Please add another stock to calculate weights."}}
         )
-    
-    price_data, errors = await market_service.fetch_daily_prices(symbols, period_type=mode)
-    
+
     if not price_data:
         return JSONResponse(
             status_code=400,
@@ -88,7 +86,7 @@ async def health_check():
         "provider": "yfinance",
         "market_data_provider": settings.market_data_provider,
         "lstm_enabled": settings.enable_lstm,
-        "cache_dir": "live_data",
+        "storage": "in-memory",
     }
 
 
@@ -252,13 +250,8 @@ async def full_analysis(request: FullAnalysisRequest):
                 },
             )
 
-        live_prices, live_errors = await market_service.fetch_live_prices(
-            symbols,
-            mode=mode,
-            interval=request.interval,
-            period=request.period,
-            refresh=False,
-        )
+        live_prices = market_service._live_prices_from_data(price_data)
+        live_errors: List[str] = []
         processed = preprocess_all(price_data, period_type=mode)
 
         reg_preds, model_comparison = predict_all_regression(processed, period_type=mode)

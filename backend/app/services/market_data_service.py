@@ -1,9 +1,8 @@
 """
-Market data service — yfinance-only provider with disk caching.
+Market data service — yfinance-only, 100% in-memory provider.
 
-Cache layout:
-    live_data/daily/{SYMBOL}.csv          (1d bars)
-    live_data/intraday/{INTERVAL}/{SYMBOL}.csv  (e.g. 5m, 15m, 1h)
+No disk cache. All OHLCV + lightweight features live in a transient
+{symbol: DataFrame} dict until the request completes.
 """
 
 from __future__ import annotations
@@ -12,20 +11,19 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import sys,os
+
+import numpy as np
 import pandas as pd
 import yfinance as yf
+
 from app.config import get_settings
 from app.utils.exceptions import InvalidSymbolError
 
 logger = logging.getLogger(__name__)
 
-
 OHLCV_COLUMNS = ["date", "open", "high", "low", "close", "volume"]
 
-# Default fetch params per dashboard mode
 MODE_DEFAULTS: Dict[str, Dict[str, str]] = {
     "daily": {"period": "1y", "interval": "1d"},
     "intraday": {"period": "5d", "interval": "5m"},
@@ -48,6 +46,59 @@ def _resolve_params(mode: str, interval: Optional[str], period: Optional[str]) -
     return resolved_period, resolved_interval
 
 
+def _vectorized_rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """Vectorized RSI — no Python loops."""
+    delta = close.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0.0, np.nan)
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    return rsi.fillna(50.0)
+
+
+def _add_technical_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute daily_return and RSI in-memory on the fly."""
+    out = df.copy()
+    out["daily_return"] = out["close"].pct_change()
+    out["rsi"] = _vectorized_rsi(out["close"])
+    return out.dropna(subset=["close"]).reset_index(drop=True)
+
+
+def _format_symbol_frame(raw: pd.DataFrame, mode: str) -> pd.DataFrame:
+    """Normalize a single ticker's yfinance slice to standard OHLCV columns."""
+    if raw.empty:
+        raise InvalidSymbolError("empty")
+
+    df = raw.reset_index()
+    if "Datetime" in df.columns:
+        if mode == "intraday":
+            date_strings = pd.to_datetime(df["Datetime"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            date_strings = pd.to_datetime(df["Datetime"]).dt.strftime("%Y-%m-%d")
+    elif "Date" in df.columns:
+        if mode == "intraday":
+            date_strings = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            date_strings = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")
+    else:
+        raise InvalidSymbolError("missing date column")
+
+    formatted = pd.DataFrame(
+        {
+            "date": date_strings,
+            "open": df["Open"].astype(float).round(4),
+            "high": df["High"].astype(float).round(4),
+            "low": df["Low"].astype(float).round(4),
+            "close": df["Close"].astype(float).round(4),
+            "volume": df["Volume"].astype(float),
+        }
+    ).sort_values("date").reset_index(drop=True)
+
+    return formatted
+
+
 class MarketDataProvider(ABC):
     @abstractmethod
     async def fetch(
@@ -67,45 +118,84 @@ class MarketDataProvider(ABC):
 
 
 class YFinanceDataProvider(MarketDataProvider):
-    """yfinance fetcher with local disk cache."""
-
+    """yfinance fetcher — single batch download, zero disk I/O."""
 
     @property
     def source_name(self) -> str:
         return "yfinance"
 
-    def _download_sync(self, symbol: str, period: str, interval: str, mode: str) -> pd.DataFrame:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval, auto_adjust=True)
-        if df.empty:
-            raise InvalidSymbolError(symbol)
+    def _batch_download_sync(
+        self,
+        symbols: List[str],
+        period: str,
+        interval: str,
+        mode: str,
+    ) -> Dict[str, pd.DataFrame]:
+        cleaned_symbols = [s.upper().strip() for s in symbols if s and s.strip()]
+        if not cleaned_symbols:
+            return {}
 
-        df = df.reset_index()
-        if "Datetime" in df.columns:
-            date_strings = pd.to_datetime(df["Datetime"]).dt.strftime("%Y-%m-%d %H:%M:%S")
-        elif "Date" in df.columns:
-            if mode == "intraday":
-                date_strings = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                date_strings = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")
-        else:
-            raise InvalidSymbolError(symbol)
+        logger.info(
+            "Requesting live batch market stream from yfinance for %d symbols...",
+            len(cleaned_symbols),
+        )
 
+        raw = yf.download(
+            cleaned_symbols,
+            period=period,
+            interval=interval,
+            group_by="ticker",
+            progress=False,
+            auto_adjust=True,
+            threads=True,
+        )
+
+        if raw is None or raw.empty:
+            raise InvalidSymbolError(",".join(cleaned_symbols))
+
+        multi_ticker = isinstance(raw.columns, pd.MultiIndex)
         min_rows = 5 if mode == "daily" else 20
-        formatted = pd.DataFrame(
-            {
-                "date": date_strings,
-                "open": df["Open"].round(4),
-                "high": df["High"].round(4),
-                "low": df["Low"].round(4),
-                "close": df["Close"].round(4),
-                "volume": df["Volume"].astype(float),
-            }
-        ).sort_values("date").reset_index(drop=True)
+        results: Dict[str, pd.DataFrame] = {}
 
-        if len(formatted) < min_rows:
-            raise InvalidSymbolError(symbol)
-        return formatted
+        for sym in cleaned_symbols:
+            try:
+                if multi_ticker:
+                    if sym not in raw.columns.get_level_values(0):
+                        continue
+                    sym_raw = raw[sym]
+                else:
+                    sym_raw = raw
+
+                formatted = _format_symbol_frame(sym_raw, mode)
+                if len(formatted) < min_rows:
+                    continue
+
+                results[sym] = _add_technical_features(formatted)
+            except (KeyError, InvalidSymbolError, ValueError, TypeError) as exc:
+                logger.warning("Skipping %s in batch parse: %s", sym, exc)
+
+        if not results:
+            raise InvalidSymbolError(",".join(cleaned_symbols))
+
+        return results
+
+    async def fetch_batch(
+        self,
+        symbols: List[str],
+        mode: str = "daily",
+        interval: Optional[str] = None,
+        period: Optional[str] = None,
+        refresh: bool = False,
+    ) -> Dict[str, pd.DataFrame]:
+        mode = _normalize_mode(mode)
+        resolved_period, resolved_interval = _resolve_params(mode, interval, period)
+        return await asyncio.to_thread(
+            self._batch_download_sync,
+            symbols,
+            resolved_period,
+            resolved_interval,
+            mode,
+        )
 
     async def fetch(
         self,
@@ -116,21 +206,16 @@ class YFinanceDataProvider(MarketDataProvider):
         refresh: bool = False,
     ) -> pd.DataFrame:
         sym = symbol.upper().strip()
-        mode = _normalize_mode(mode)
-        resolved_period, resolved_interval = _resolve_params(mode, interval, period)
-        
-        try:
-            logger.info(f"📡 Requesting 100%% live market stream from yfinance for {sym}...")
-            return await asyncio.to_thread(
-                self._download_sync, sym, resolved_period, resolved_interval, mode
-            )
-        except Exception as exc:
-            logger.error("Real-time stream download failed for %s: %s", sym, exc)
-            raise InvalidSymbolError(sym) from exc
+        batch = await self.fetch_batch(
+            [sym], mode=mode, interval=interval, period=period, refresh=refresh
+        )
+        if sym not in batch:
+            raise InvalidSymbolError(sym)
+        return batch[sym]
 
 
 class MarketDataService:
-    """Orchestrates yfinance fetching with disk cache."""
+    """Orchestrates in-memory yfinance fetching."""
 
     def __init__(self):
         self.settings = get_settings()
@@ -160,24 +245,34 @@ class MarketDataService:
         period: Optional[str] = None,
         refresh: bool = False,
     ) -> Tuple[Dict[str, pd.DataFrame], List[str]]:
-        """Fetch OHLCV history for one or more symbols."""
+        """Fetch OHLCV + daily_return + rsi for all symbols in one batch call."""
         self.reset_warnings()
-        results: Dict[str, pd.DataFrame] = {}
-        errors: List[str] = []
+        cleaned = [s.upper().strip() for s in symbols if s and s.strip()]
+        if not cleaned:
+            return {}, []
 
-        for symbol in symbols:
-            sym = symbol.upper().strip()
-            if not sym:
-                continue
-            try:
-                results[sym] = await self._provider.fetch(
-                    sym, mode=mode, interval=interval, period=period, refresh=refresh
+        try:
+            results = await self._provider.fetch_batch(
+                cleaned,
+                mode=mode,
+                interval=interval,
+                period=period,
+                refresh=refresh,
+            )
+        except InvalidSymbolError:
+            return {}, [
+                f"Could not fetch data for requested symbols: {', '.join(cleaned)}"
+            ]
+        except Exception as exc:
+            logger.error("Batch market download failed: %s", exc)
+            return {}, [f"Failed to fetch market data: {exc}"]
+
+        errors: List[str] = []
+        for sym in cleaned:
+            if sym not in results:
+                errors.append(
+                    f"Could not fetch data for {sym} - invalid symbol or no yfinance data"
                 )
-            except InvalidSymbolError:
-                errors.append(f"Could not fetch data for {sym} - invalid symbol or no yfinance data")
-            except Exception as exc:
-                logger.error("Unexpected error fetching %s: %s", sym, exc)
-                errors.append(f"Failed to fetch {sym}: {exc}")
 
         return results, errors
 
@@ -202,10 +297,14 @@ class MarketDataService:
         period: Optional[str] = None,
         refresh: bool = False,
     ) -> Tuple[List[dict], List[str]]:
-        """Latest price snapshot from cached or freshly fetched bars."""
+        """Latest price snapshot from in-memory bars."""
         price_data, errors = await self.fetch_prices(
             symbols, mode=mode, interval=interval, period=period, refresh=refresh
         )
+        return self._live_prices_from_data(price_data), errors
+
+    def _live_prices_from_data(self, price_data: Dict[str, pd.DataFrame]) -> List[dict]:
+        """Build live price snapshots from an already-fetched in-memory dict."""
         now = datetime.now(timezone.utc).isoformat()
         live_prices = []
         for symbol, df in price_data.items():
@@ -227,4 +326,4 @@ class MarketDataService:
                     "source": self.data_source,
                 }
             )
-        return live_prices, errors
+        return live_prices
