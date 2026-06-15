@@ -8,7 +8,6 @@ FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 
 
 ## Dashboard Showcase
 
-<!-- Add your application screenshots here. Recommended size: 1920x1080 ->
 ### Main Analytics Interface
 ![FinOptima Main Dashboard UI](docs/Interactive-Interface.png)
 
