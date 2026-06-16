@@ -26,6 +26,8 @@ def sharpe_ratio(returns: pd.Series, risk_free: float = RISK_FREE_RATE) -> float
 
 
 def max_drawdown(prices: pd.Series) -> float:
+    if prices is None or len(prices) == 0:
+        return 0.0
     cumulative = prices / prices.iloc[0]
     running_max = cumulative.cummax()
     drawdown = (cumulative - running_max) / running_max
@@ -47,6 +49,9 @@ def compute_per_asset_risk(processed: Dict[str, pd.DataFrame]) -> Dict[str, Dict
     """Risk metrics for each symbol."""
     metrics: Dict[str, Dict[str, float]] = {}
     for symbol, df in processed.items():
+        if df.empty or len(df) == 0 or "daily_return" not in df.columns:
+            metrics[symbol] = {"volatility": 0.0, "sharpe_ratio": 0.0, "max_drawdown": 0.0}
+            continue
         returns = df["daily_return"].dropna()
         metrics[symbol] = {
             "volatility": round(annualized_volatility(returns), 4),
@@ -58,8 +63,9 @@ def compute_per_asset_risk(processed: Dict[str, pd.DataFrame]) -> Dict[str, Dict
 
 def correlation_matrix(processed: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, float]]:
     """Pairwise return correlations across assets."""
+    cleaned = {s: df for s, df in processed.items() if not df.empty and len(df) > 0}
     returns_df = pd.DataFrame(
-        {symbol: df.set_index("date")["daily_return"] for symbol, df in processed.items()}
+        {symbol: df.set_index("date")["daily_return"] for symbol, df in cleaned.items()}
     ).dropna()
 
     if returns_df.empty or returns_df.shape[1] < 2:
