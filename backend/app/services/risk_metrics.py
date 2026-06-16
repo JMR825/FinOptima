@@ -95,8 +95,13 @@ def portfolio_risk(
     if not symbols or any(processed[s].empty for s in symbols if s in processed):
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
+    arrays = [processed[s]["daily_return"].to_numpy(copy=False) for s in symbols]
+    min_len = min(len(a) for a in arrays)
+    if min_len < 2:
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
     returns_df = pd.DataFrame(
-        {s: processed[s]["daily_return"].values for s in symbols}
+        {s: a[-min_len:] for s, a in zip(symbols, arrays)}
     ).dropna()
 
     cov = returns_df.to_numpy(copy=False)
@@ -115,7 +120,7 @@ def portfolio_risk(
         port_sharpe = 0.0
 
     price_arr = np.column_stack(
-        [processed[s]["close"].to_numpy(copy=False) for s in symbols]
+        [processed[s]["close"].to_numpy(copy=False)[-min_len:] for s in symbols]
     )
     weighted_prices = price_arr @ w
     port_mdd = max_drawdown(pd.Series(weighted_prices))
