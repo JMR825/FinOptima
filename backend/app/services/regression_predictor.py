@@ -154,7 +154,16 @@ def predict_all_regression(
             )
             comparisons[symbol] = result["model_comparison"]
         except (ValueError, Exception):
-            # Fallback: use recent momentum as simple prediction
+            if len(df) == 0:
+                predictions.append({
+                    "symbol": symbol,
+                    "latest_price": 0.0,
+                    "predicted_return": 0.0,
+                    "trend": "neutral",
+                    "confidence": 0.0,
+                    "model_used": "no_data_fallback",
+                })
+                continue
             mom = float(df["momentum"].iloc[-1]) if "momentum" in df.columns else 0.0
             predictions.append(
                 {

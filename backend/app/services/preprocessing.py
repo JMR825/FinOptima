@@ -72,6 +72,8 @@ def add_momentum(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
 
 def preprocess_symbol_data(df: pd.DataFrame, period_type: str = "daily") -> pd.DataFrame:
     """Full preprocessing pipeline for a single symbol with adaptive windows."""
+    if df is None or df.empty or len(df) < 2:
+        return pd.DataFrame()
     data = clean_price_data(df)
     data = add_returns(data)
     
