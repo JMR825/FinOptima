@@ -13,13 +13,20 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
+import atexit
+import os
+import tempfile
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
 
-# Disable yfinance SQLite cache (causes "database is locked" on Render's
-# ephemeral filesystem under concurrent requests). All data stays in-memory.
-yf.set_tz_cache_location(None)
+# Redirect yfinance's timezone cache to a per-process temp dir.
+# Prevents "database is locked" errors on Render's ephemeral filesystem
+# where multiple workers or deploys would conflict on the default location
+# inside the read-only package directory.
+_tz_cache_dir = tempfile.mkdtemp(prefix="yf_tz_")
+yf.set_tz_cache_location(os.path.join(_tz_cache_dir, "tz_cache.sqlite"))
 
 from app.config import get_settings
 from app.utils.exceptions import InvalidSymbolError
