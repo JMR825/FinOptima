@@ -17,6 +17,10 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+# Disable yfinance SQLite cache (causes "database is locked" on Render's
+# ephemeral filesystem under concurrent requests). All data stays in-memory.
+yf.set_tz_cache_location(None)
+
 from app.config import get_settings
 from app.utils.exceptions import InvalidSymbolError
 
