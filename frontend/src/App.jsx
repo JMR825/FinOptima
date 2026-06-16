@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import AllocationChart from './components/AllocationChart'
+
 import ClusterView from './components/ClusterView'
 import CorrelationMatrix from './components/CorrelationMatrix'
 import ErrorState from './components/ErrorState'
@@ -15,6 +16,8 @@ import RiskReturnChart from './components/RiskReturnChart'
 import StockInputForm from './components/StockInputForm'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { fetchFullAnalysis } from './services/api'
+import { useLivePricesWebSocket } from './hooks/useLivePricesWebSocket'
+
 
 const DEFAULT_FORM = {
   symbols: 'AAPL, MSFT, GOOGL, NVDA',
@@ -39,6 +42,19 @@ export default function App() {
     () => (form.mode === 'intraday' ? 30000 : 45000),
     [form.mode]
   )
+
+  // WebSocket-only live price updates. Always polls a short interval so
+  // prices refresh every few seconds regardless of the display mode.
+  // The backend uses `mode` only for change_pct calculation (daily = from
+  // yesterday's close, intraday = from ~1 hour ago).
+  const { livePrices: wsLivePrices, warnings: wsWarnings } = useLivePricesWebSocket({
+    symbols: form.symbols.split(',').map((s) => s.trim()).filter(Boolean),
+    mode: form.mode,
+    interval: form.interval || '5m',
+    period: '2d',
+    enabled: form.symbols.length > 0,
+  })
+
 
   const runAnalysis = useCallback(async () => {
     setLoading(true)
@@ -106,10 +122,12 @@ export default function App() {
                 <MarketStatusBar
                   dataSource={data.data_source}
                   timestamp={data.timestamp}
-                  warnings={data.warnings}
+                  warnings={[...(wsWarnings || []), ...(data.warnings || [])]}
+
                   mode={data.mode}
                 />
-                <LivePriceCards livePrices={data.live_prices} />
+                <LivePriceCards livePrices={wsLivePrices.length ? wsLivePrices : data.live_prices} />
+
                 <PredictionSummaryCards portfolio={data.portfolio} />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <AllocationChart weights={data.portfolio?.weights} />

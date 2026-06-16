@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.PROD ? 'https://finoptima-gts9.onrender.com' : '';
+// API base URL: use VITE_API_URL env var, fall back to localhost for dev.
+const API_BASE = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
+  || (import.meta.env.PROD ? 'https://finoptima-gts9.onrender.com' : 'http://localhost:8000');
+
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {

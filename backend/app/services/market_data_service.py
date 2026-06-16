@@ -301,47 +301,56 @@ class MarketDataService:
         price_data, errors = await self.fetch_prices(
             symbols, mode=mode, interval=interval, period=period, refresh=refresh
         )
-        return self._live_prices_from_data(price_data), errors
+        return self._live_prices_from_data(price_data, mode=mode), errors
 
-    def _live_prices_from_data(self, price_data: Dict[str, pd.DataFrame]) -> List[dict]:
+    def _live_prices_from_data(self, price_data: Dict[str, pd.DataFrame], mode: str = "daily") -> List[dict]:
         """Build live price snapshots from an already-fetched in-memory dict."""
+        return self.live_prices_from_data(price_data, mode=mode)
+
+    def live_prices_from_data(self, price_data: Dict[str, pd.DataFrame], mode: str = "daily") -> List[dict]:
+        """
+        Build live price snapshots with mode-aware change_pct:
+        - daily:  % change from previous day's close
+        - intraday: % change from ~1 hour ago
+        """
         now = datetime.now(timezone.utc).isoformat()
+        is_intraday = mode == "intraday"
         live_prices = []
         for symbol, df in price_data.items():
-            # Ensure df is not None, not empty, and has AT LEAST 1 row with a close column
             if df is None or df.empty or len(df) < 1 or "close" not in df.columns:
                 continue
-                
+
             try:
                 latest = df.iloc[-1]
-                
-                # Check if there is enough historical data to compute a percentage change
-                if len(df) > 1:
-                    prev = df.iloc[-2]
-                    prev_close = float(prev["close"])
-                    latest_close = float(latest["close"])
-                    
+                latest_close = float(latest["close"])
+
+                if is_intraday and len(df) >= 2:
+                    target = pd.Timestamp(latest["date"]) - pd.Timedelta(hours=1)
+                    dates = pd.to_datetime(df["date"])
+                    offset = (dates - target).abs().idxmin()
+                    ref_idx = max(offset, 0)
+                    if ref_idx == len(df) - 1:
+                        ref_idx = max(len(df) - 2, 0)
+                    prev_close = float(df.iloc[ref_idx]["close"])
+                    change_pct = ((latest_close - prev_close) / prev_close) * 100 if prev_close != 0 else 0.0
+                elif len(df) > 1:
+                    prev_close = float(df.iloc[-2]["close"])
                     change_pct = ((latest_close - prev_close) / prev_close) * 100 if prev_close != 0 else 0.0
                 else:
-                    # Single row edge-case fallback logic
-                    latest_close = float(latest["close"])
                     change_pct = 0.0
 
-                # Safeguard against infinite floating math breaks before JSON transmission
                 if not np.isfinite(latest_close): latest_close = 0.0
                 if not np.isfinite(change_pct): change_pct = 0.0
 
-                live_prices.append(
-                    {
-                        "symbol": symbol,
-                        "price": round(latest_close, 2),
-                        "change_pct": round(change_pct, 2),
-                        "last_updated": now,
-                        "source": self.data_source,
-                    }
-                )
+                live_prices.append({
+                    "symbol": symbol,
+                    "price": round(latest_close, 2),
+                    "change_pct": round(change_pct, 2),
+                    "last_updated": now,
+                    "source": self.data_source,
+                })
             except Exception as exc:
-                logger.error(f"Error calculating real-time row indexes for {symbol}: {str(exc)}")
+                logger.error(f"Error computing change for {symbol}: {str(exc)}")
                 continue
-                
+
         return live_prices

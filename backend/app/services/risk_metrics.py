@@ -32,6 +32,17 @@ def max_drawdown(prices: pd.Series) -> float:
     return float(drawdown.min())
 
 
+def portfolio_var_95(port_return: float, port_vol: float) -> float:
+    z_95 = 1.645
+    return round(z_95 * port_vol - port_return, 4)
+
+
+def portfolio_cvar_95(port_return: float, port_vol: float) -> float:
+    z_95 = 1.645
+    pdf_z = np.exp(-z_95**2 / 2) / np.sqrt(2 * np.pi)
+    return round(port_vol * pdf_z / 0.05 - port_return, 4)
+
+
 def compute_per_asset_risk(processed: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, float]]:
     """Risk metrics for each symbol."""
     metrics: Dict[str, Dict[str, float]] = {}
@@ -63,27 +74,29 @@ def portfolio_risk(
     weights: Dict[str, float],
     processed: Dict[str, pd.DataFrame],
     period_type: str = "daily"
-) -> Tuple[float, float, float, float]:
+) -> Tuple[float, float, float, float, float, float]:
     """
-    Compute expected portfolio return, volatility, Sharpe, and max drawdown
-    using historical return covariance.
+    Compute expected portfolio return, volatility, Sharpe, max drawdown,
+    VaR (95%), and CVaR (95%) using historical return covariance.
+    All array ops use NumPy views to avoid RAM cloning on Render free tier.
     """
     if period_type == "intraday" and any(len(df) < 5 for df in processed.values()):
-        return 0.0, 0.0, 0.0, 0.0
-    
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
     symbols = [s for s in weights if weights[s] > 0 and s in processed]
     if not symbols:
-        return 0.0, 0.0, 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     returns_df = pd.DataFrame(
-        {s: processed[s]["daily_return"].values[-len(processed[s]) :] for s in symbols}
+        {s: processed[s]["daily_return"].values for s in symbols}
     ).dropna()
+
+    cov = returns_df.to_numpy(copy=False)
+    mean_returns = cov.mean(axis=0) * TRADING_DAYS
+    cov = np.cov(cov, rowvar=False) * TRADING_DAYS
 
     w = np.array([weights[s] for s in symbols])
     w = w / w.sum()
-
-    mean_returns = returns_df.mean().values * TRADING_DAYS
-    cov = returns_df.cov().values * TRADING_DAYS
 
     port_return = float(np.dot(w, mean_returns))
     port_vol = float(np.sqrt(np.dot(w.T, np.dot(cov, w))))
@@ -93,9 +106,13 @@ def portfolio_risk(
     else:
         port_sharpe = 0.0
 
-    # Approximate portfolio drawdown from weighted price series
-    price_matrix = pd.DataFrame({s: processed[s]["close"].values for s in symbols})
-    weighted_prices = (price_matrix * w).sum(axis=1)
-    port_mdd = max_drawdown(weighted_prices)
+    price_arr = np.column_stack(
+        [processed[s]["close"].to_numpy(copy=False) for s in symbols]
+    )
+    weighted_prices = price_arr @ w
+    port_mdd = max_drawdown(pd.Series(weighted_prices))
 
-    return port_return, port_vol, port_sharpe, port_mdd
+    port_var = portfolio_var_95(port_return, port_vol)
+    port_cvar = portfolio_cvar_95(port_return, port_vol)
+
+    return port_return, port_vol, port_sharpe, port_mdd, port_var, port_cvar

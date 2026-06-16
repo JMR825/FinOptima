@@ -38,6 +38,11 @@ app.add_middleware(
 
 app.include_router(router)
 
+# WebSocket routes (real-time live price updates)
+from app.api.ws_routes import router as ws_router
+
+app.include_router(ws_router)
+
 
 @app.get("/")
 def root():

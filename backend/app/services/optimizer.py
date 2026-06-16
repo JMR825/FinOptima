@@ -17,7 +17,13 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from app.services.risk_metrics import TRADING_DAYS, portfolio_risk
+from app.services.risk_metrics import (
+    TRADING_DAYS,
+    RISK_FREE_RATE,
+    portfolio_risk,
+    portfolio_var_95,
+    portfolio_cvar_95,
+)
 
 RISK_PREFS = {"low": 0.5, "medium": 1.0, "high": 1.5}
 
@@ -41,6 +47,38 @@ def _returns_matrix(processed: Dict[str, pd.DataFrame]) -> Tuple[List[str], np.n
     return symbols, mean_returns, cov
 
 
+def _black_litterman_blend(
+    mean_returns: np.ndarray,
+    cov: np.ndarray,
+    predictions: List[Dict],
+    symbols: List[str],
+) -> np.ndarray:
+    """Compute Black-Litterman posterior expected returns via matrix inversion."""
+    n = len(mean_returns)
+    w_eq = np.ones(n) / n
+
+    mkt_ret = mean_returns @ w_eq
+    mkt_var = w_eq @ cov @ w_eq
+    delta = max((mkt_ret - RISK_FREE_RATE) / mkt_var, 0.5) if mkt_var > 0 else 2.5
+
+    pi = delta * cov @ w_eq
+
+    tau = 0.05
+    pred_map = {p["symbol"]: p["predicted_return"] * TRADING_DAYS for p in predictions}
+    Q = np.array([pred_map.get(s, pi[i]) for i, s in enumerate(symbols)])
+
+    P = np.eye(n)
+    omega = tau * np.diag(np.diag(cov))
+
+    tau_cov_inv = np.linalg.inv(tau * cov)
+    omega_inv = np.linalg.inv(omega)
+
+    M_inv = np.linalg.inv(tau_cov_inv + P.T @ omega_inv @ P)
+    bl_returns = M_inv @ (tau_cov_inv @ pi + P.T @ omega_inv @ Q)
+
+    return bl_returns
+
+
 def _optimize_weights(
     mean_returns: np.ndarray,
     cov: np.ndarray,
@@ -48,12 +86,16 @@ def _optimize_weights(
     risk_multiplier: float = 1.0,
 ) -> np.ndarray:
     n = len(mean_returns)
+    MAX_SINGLE_WEIGHT = 0.40
 
     def portfolio_vol(w: np.ndarray) -> float:
         return float(np.sqrt(w @ cov @ w))
 
-    constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]
-    bounds = [(0.0, 1.0) for _ in range(n)]
+    constraints = [
+        {"type": "eq", "fun": lambda w: np.sum(w) - 1.0},
+        {"type": "ineq", "fun": lambda w: MAX_SINGLE_WEIGHT - w},
+    ]
+    bounds = [(0.0, MAX_SINGLE_WEIGHT) for _ in range(n)]
     x0 = np.ones(n) / n
 
     if goal == "min_volatility":
@@ -64,12 +106,12 @@ def _optimize_weights(
             vol = portfolio_vol(w)
             if vol == 0:
                 return 0.0
-            return -(ret - 0.02) / (vol * risk_multiplier)
+            return -(ret - RISK_FREE_RATE) / (vol * risk_multiplier)
 
         result = minimize(neg_sharpe, x0, method="SLSQP", bounds=bounds, constraints=constraints)
 
     weights = result.x if result.success else x0
-    weights = np.clip(weights, 0.0, 1.0)
+    weights = np.clip(weights, 0.0, MAX_SINGLE_WEIGHT)
 
     total_w = weights.sum()
     return weights / total_w if total_w > 0 else x0
@@ -84,9 +126,8 @@ def optimize_portfolio(
     **kwargs,
 ) -> Dict:
     """
-    Optimize portfolio weights and generate recommendation summary.
-
-    Predicted returns are blended with historical means for expected return.
+    Optimize portfolio weights using Black-Litterman expected returns
+    and Capital Defense Allocation Guards (max 40% single-asset cap).
     """
     if any(df.empty or len(df) < 5 for df in processed.values()):
         symbols = list(processed.keys())
@@ -99,6 +140,9 @@ def optimize_portfolio(
             "expected_volatility": 0.0,
             "sharpe_ratio": 0.0,
             "max_drawdown": 0.0,
+            "portfolio_var_95": 0.0,
+            "portfolio_cvar_95": 0.0,
+            "blended_expected_returns": [],
             "weights": weights,
             "budget_allocation": budget_alloc,
             "recommendation_summary": (
@@ -109,24 +153,29 @@ def optimize_portfolio(
 
     symbols, mean_returns, cov = _returns_matrix(processed)
 
-    pred_map = {p["symbol"]: p["predicted_return"] * TRADING_DAYS for p in predictions}
-    for i, symbol in enumerate(symbols):
-        if symbol in pred_map:
-            mean_returns[i] = 0.7 * mean_returns[i] + 0.3 * pred_map[symbol]
+    bl_returns = _black_litterman_blend(mean_returns, cov, predictions, symbols)
 
     risk_mult = RISK_PREFS.get(risk_preference, 1.0)
-    weights_arr = _optimize_weights(mean_returns, cov, optimization_goal, risk_mult)
+    weights_arr = _optimize_weights(bl_returns, cov, optimization_goal, risk_mult)
 
     weights = dict(zip(symbols, np.round(weights_arr, 4).tolist()))
-    port_return, port_vol, port_sharpe, port_mdd = portfolio_risk(weights, processed)
+    port_return, port_vol, port_sharpe, port_mdd, port_var, port_cvar = portfolio_risk(weights, processed)
     summary = _build_recommendation(weights, optimization_goal, risk_preference, port_sharpe)
     budget_alloc = {symbol: round(weight * budget, 2) for symbol, weight in weights.items()}
+
+    blended_returns_list = [
+        {"symbol": s, "blended_return": round(float(r), 6)}
+        for s, r in zip(symbols, bl_returns)
+    ]
 
     return {
         "expected_return": round(port_return, 4),
         "expected_volatility": round(port_vol, 4),
         "sharpe_ratio": round(port_sharpe, 4),
         "max_drawdown": round(port_mdd, 4),
+        "portfolio_var_95": port_var,
+        "portfolio_cvar_95": port_cvar,
+        "blended_expected_returns": blended_returns_list,
         "weights": weights,
         "budget_allocation": budget_alloc,
         "recommendation_summary": summary,

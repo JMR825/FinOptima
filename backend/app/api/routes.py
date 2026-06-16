@@ -13,6 +13,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import gc
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
@@ -322,7 +323,7 @@ async def full_analysis(request: FullAnalysisRequest):
                 f"Single-ticker analysis: 100% allocation to {sym}. Add more tickers for diversified optimization."
             )
 
-        return build_full_response(
+        response = build_full_response(
             live_prices=live_prices,
             predictions=predictions,
             portfolio=portfolio,
@@ -334,6 +335,15 @@ async def full_analysis(request: FullAnalysisRequest):
             mode=mode,
             warnings=all_warnings,
         )
+
+        gc.collect()
+        try:
+            import tensorflow as tf
+            tf.keras.backend.clear_session()
+        except ImportError:
+            pass
+
+        return response
 
     except PortfolioOptimizerError as exc:
         return JSONResponse(status_code=400, content={"detail": {"code": exc.code, "message": exc.message}})

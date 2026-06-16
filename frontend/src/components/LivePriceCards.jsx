@@ -1,6 +1,7 @@
 export default function LivePriceCards({ livePrices = [] }) {
   if (!livePrices.length) return null
 
+  // Preserve order and show exactly what we receive from the websocket.
   return (
     <div>
       <h2 className="text-lg font-semibold mb-3">Live Prices</h2>
@@ -8,9 +9,9 @@ export default function LivePriceCards({ livePrices = [] }) {
         {livePrices.map((item) => (
           <div key={item.symbol} className="card">
             <div className="text-sm text-slate-400">{item.symbol}</div>
-            <div className="text-2xl font-bold mt-1">${item.price?.toFixed(2)}</div>
-            <div className={`text-sm mt-1 ${item.change_pct >= 0 ? 'trend-up' : 'trend-down'}`}>
-              {item.change_pct >= 0 ? '+' : ''}{item.change_pct?.toFixed(2)}%
+            <div className="text-2xl font-bold mt-1">${Number(item.price ?? 0).toFixed(2)}</div>
+            <div className={`text-sm mt-1 ${Number(item.change_pct ?? 0) >= 0 ? 'trend-up' : 'trend-down'}`}>
+              {Number(item.change_pct ?? 0) >= 0 ? '+' : ''}{Number(item.change_pct ?? 0).toFixed(2)}%
             </div>
           </div>
         ))}
@@ -18,3 +19,4 @@ export default function LivePriceCards({ livePrices = [] }) {
     </div>
   )
 }
+
