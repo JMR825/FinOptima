@@ -86,11 +86,13 @@ def portfolio_risk(
     VaR (95%), and CVaR (95%) using historical return covariance.
     All array ops use NumPy views to avoid RAM cloning on Render free tier.
     """
+    if any(df.empty or len(df) == 0 for df in processed.values()):
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     if period_type == "intraday" and any(len(df) < 5 for df in processed.values()):
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     symbols = [s for s in weights if weights[s] > 0 and s in processed]
-    if not symbols:
+    if not symbols or any(processed[s].empty for s in symbols if s in processed):
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     returns_df = pd.DataFrame(
