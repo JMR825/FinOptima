@@ -49,9 +49,10 @@ export async function fetchLiveData(symbols) {
   })
 }
 
-export async function fetchFullAnalysis(payload) {
+export async function fetchFullAnalysis(payload, signal) {
   return request('/api/full-analysis', {
     method: 'POST',
     body: JSON.stringify(payload),
+    signal,
   })
 }

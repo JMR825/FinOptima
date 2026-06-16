@@ -6,12 +6,25 @@ body {
   @apply bg-slate-950 text-slate-100 font-sans antialiased;
 }
 
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-slate-700 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-600; }
+
 .card {
   @apply bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 backdrop-blur-sm;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+  @apply border-blue-500/30;
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.06);
 }
 
 .btn-primary {
-  @apply bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .btn-secondary {
@@ -19,17 +32,48 @@ body {
 }
 
 .input-field {
-  @apply w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
 }
 
-.trend-up {
-  @apply text-emerald-400;
+.trend-up { @apply text-emerald-400; }
+.trend-down { @apply text-rose-400; }
+.trend-neutral { @apply text-amber-400; }
+
+.skeleton {
+  @apply rounded;
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
 
-.trend-down {
-  @apply text-rose-400;
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.trend-neutral {
-  @apply text-amber-400;
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-green {
+  0% { background-color: rgba(16, 185, 129, 0.25); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-red {
+  0% { background-color: rgba(239, 68, 68, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.flash-green {
+  animation: flash-green 0.6s ease-out;
+}
+
+.flash-red {
+  animation: flash-red 0.6s ease-out;
 }

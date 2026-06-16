@@ -42,7 +42,7 @@ INTRADAY_FEATURE_COLUMNS = [
 def _feature_columns(period_type: str = "daily") -> list:
     return INTRADAY_FEATURE_COLUMNS if period_type == "intraday" else DAILY_FEATURE_COLUMNS
 
-MIN_TRAINING_ROWS = 30
+MIN_TRAINING_ROWS = 20
 
 
 def _prepare_features(df: pd.DataFrame, period_type: str = "daily") -> Tuple[np.ndarray, np.ndarray]:

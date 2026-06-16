@@ -350,4 +350,14 @@ async def full_analysis(request: FullAnalysisRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        return JSONResponse(status_code=500, content={"detail": {"message": str(exc)}})
+        logger.exception("Full analysis failed")
+        msg = str(exc)
+        if "indexer is out-of-bounds" in msg or "iloc" in msg:
+            friendly = "Insufficient market data for one or more symbols. Try adding more tickers or switch to daily mode."
+        elif "Rate limit" in msg or "Too Many Requests" in msg:
+            friendly = "Market data provider rate limit reached. Please wait a moment and try again."
+        elif "database is locked" in msg:
+            friendly = "Market data temporarily unavailable. Please try again."
+        else:
+            friendly = "An unexpected error occurred. Please try again or use different symbols."
+        return JSONResponse(status_code=500, content={"detail": {"message": friendly}})

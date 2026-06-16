@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 OHLCV_COLUMNS = ["date", "open", "high", "low", "close", "volume"]
 
 MODE_DEFAULTS: Dict[str, Dict[str, str]] = {
-    "daily": {"period": "1y", "interval": "1d"},
-    "intraday": {"period": "5d", "interval": "5m"},
+    "daily": {"period": "6mo", "interval": "1d"},
+    "intraday": {"period": "2d", "interval": "5m"},
 }
 
 VALID_INTRADAY_INTERVALS = {"1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"}
