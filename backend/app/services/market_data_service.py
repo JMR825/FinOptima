@@ -308,22 +308,40 @@ class MarketDataService:
         now = datetime.now(timezone.utc).isoformat()
         live_prices = []
         for symbol, df in price_data.items():
-            if df.empty:
+            # Ensure df is not None, not empty, and has AT LEAST 1 row with a close column
+            if df is None or df.empty or len(df) < 1 or "close" not in df.columns:
                 continue
-            latest = df.iloc[-1]
-            prev = df.iloc[-2] if len(df) > 1 else latest
-            change_pct = (
-                ((latest["close"] - prev["close"]) / prev["close"]) * 100
-                if prev["close"]
-                else 0.0
-            )
-            live_prices.append(
-                {
-                    "symbol": symbol,
-                    "price": round(float(latest["close"]), 2),
-                    "change_pct": round(float(change_pct), 2),
-                    "last_updated": now,
-                    "source": self.data_source,
-                }
-            )
+                
+            try:
+                latest = df.iloc[-1]
+                
+                # Check if there is enough historical data to compute a percentage change
+                if len(df) > 1:
+                    prev = df.iloc[-2]
+                    prev_close = float(prev["close"])
+                    latest_close = float(latest["close"])
+                    
+                    change_pct = ((latest_close - prev_close) / prev_close) * 100 if prev_close != 0 else 0.0
+                else:
+                    # Single row edge-case fallback logic
+                    latest_close = float(latest["close"])
+                    change_pct = 0.0
+
+                # Safeguard against infinite floating math breaks before JSON transmission
+                if not np.isfinite(latest_close): latest_close = 0.0
+                if not np.isfinite(change_pct): change_pct = 0.0
+
+                live_prices.append(
+                    {
+                        "symbol": symbol,
+                        "price": round(latest_close, 2),
+                        "change_pct": round(change_pct, 2),
+                        "last_updated": now,
+                        "source": self.data_source,
+                    }
+                )
+            except Exception as exc:
+                logger.error(f"Error calculating real-time row indexes for {symbol}: {str(exc)}")
+                continue
+                
         return live_prices
