@@ -1,47 +1,47 @@
 # FinOptima
 
-<div align="center"> ![OSCG 2026](/docs/oscg%202026.jpeg) </div>
+<div align="center"><img src="docs/oscg 2026.jpeg" alt="OSCG 2026" /></div>
 
 ## AI-Powered Portfolio Optimization System
 
 FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 1.0**, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
 
 ---
-<div align="center"> ![design](docs/FinOptima.png) </div>
+<div align="center"><img src="docs/FinOptima.png" alt="design" /></div>
 
 ## Dashboard Showcase
 
 ### Main Analytics Interface
 
-<div align="center"> ![FinOptima Main Dashboard UI](docs/Interactive-Interface.png) </div>
+<div align="center"><img src="docs/Interactive-Interface.png" alt="FinOptima Main Dashboard UI" /></div>
 
 ### Live Price Board
 
-<div align="center"> ![Live Prices of Stocks](docs/Live%20Price%20Board.png) </div>
+<div align="center"><img src="docs/Live Price Board.png" alt="Live Prices of Stocks" /></div>
 
 ### Portfolio Summary
 
-<div align="center"> ![Portfolio Summary](docs/Portfolio%20Summary.png)</div>
+<div align="center"><img src="docs/Portfolio Summary.png" alt="Portfolio Summary" /></div>
 
 ### Asset Allocation Charting Panel
 
-<div align="center"> ![FinOptima Asset Allocation](docs/allocation.png) </div>
+<div align="center"><img src="docs/allocation.png" alt="FinOptima Asset Allocation" /></div>
 
 ### Expected Return vs Volatility
 
- <div align="center"> ![FinOptima Returns](docs/Returns.png) </div>
+<div align="center"><img src="docs/Returns.png" alt="FinOptima Returns" /></div>
 
 ### Price Trends (Daily)
 
-<div align="center"> ![FinOptima Trends](docs/Price%20Trends%20(Daily).png) </div>
+<div align="center"><img src="docs/Price Trends (Daily).png" alt="FinOptima Trends" /></div>
 
 ### Price Trends (Intraday)
 
-<div align="center"> ![FinOptima Trends Intraday](docs/Price%20Trends%20(Intraday).png) </div>
+<div align="center"><img src="docs/Price Trends (Intraday).png" alt="FinOptima Trends Intraday" /></div>
 
 ### Stock Clusters, Correlation Matrix & Analysis Table
 
-<div align="center"> ![Clusters and Correlation Matrix](docs/clusters%20corr%20Matrix%20and%20analysis%20table.png) </div>
+<div align="center"><img src="docs/clusters corr Matrix and analysis table.png" alt="Clusters and Correlation Matrix" /></div>
 
 
 ---
