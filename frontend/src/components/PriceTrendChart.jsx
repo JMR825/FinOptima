@@ -2,10 +2,13 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
-function formatDateLabel(date) {
+function formatDateLabel(date, mode) {
   if (!date) return ''
-  // Normalize for both ISO dates (YYYY-MM-DD) and ISO datetimes (YYYY-MM-DD HH:mm:ss)
   const d = String(date)
+  if (mode === 'intraday' && d.includes(' ')) {
+    const timePart = d.split(' ')[1]
+    return timePart ? timePart.slice(0, 5) : d
+  }
   const datePart = d.includes(' ') ? d.split(' ')[0] : d
   if (!datePart.includes('-')) return d
   const mm = datePart.slice(5, 7)
@@ -24,7 +27,7 @@ function isMMDD(dateStr) {
   return typeof dateStr === 'string' && dateStr.length === 5 && dateStr[2] === '-'
 }
 
-export default function PriceTrendChart({ priceHistory = {}, selectedSymbol, mode = 'daily' }) {
+export default function PriceTrendChart({ priceHistory = {}, selectedSymbol, mode = 'daily', livePriceHistory = {} }) {
   const todayMMDD = getTodayMMDD()
   const symbols = selectedSymbol ? [selectedSymbol] : Object.keys(priceHistory).slice(0, 4)
 
@@ -34,7 +37,7 @@ export default function PriceTrendChart({ priceHistory = {}, selectedSymbol, mod
 
   const chartData = dates
     .map((date, i) => {
-      const label = formatDateLabel(date)
+      const label = formatDateLabel(date, mode)
       const point = { date: label, fullDate: date }
       symbols.forEach((sym) => {
         point[sym] = priceHistory[sym]?.[i]?.close
@@ -43,6 +46,7 @@ export default function PriceTrendChart({ priceHistory = {}, selectedSymbol, mod
     })
     .filter((p) => {
       if (!p?.date) return false
+      if (mode === 'intraday') return true
       if (!isMMDD(p.date)) return true
 
       const [mm, dd] = p.date.split('-')
@@ -51,22 +55,36 @@ export default function PriceTrendChart({ priceHistory = {}, selectedSymbol, mod
       const [tmm, tdd] = todayMMDD.split('-')
       const todayToNumber = Number(tmm) * 100 + Number(tdd)
 
-      // Keep points through today's label (inclusive)
       return labelToNumber <= todayToNumber
     })
 
-  // Ensure the chart extends through today's MM-DD label even if the latest yfinance
-  // daily bar is from a previous date (market may not have closed yet).
-  // We append a synthetic last point using the latest available close for each symbol.
-  const lastPoint = chartData[chartData.length - 1]
-  if (lastPoint && lastPoint.date !== todayMMDD) {
-    const next = { date: todayMMDD, fullDate: todayMMDD }
-    symbols.forEach((sym) => {
-      next[sym] = lastPoint?.[sym]
-    })
-    chartData.push(next)
+  // Append synthetic today point only in daily mode
+  if (mode !== 'intraday') {
+    const lastPoint = chartData[chartData.length - 1]
+    if (lastPoint && lastPoint.date !== todayMMDD) {
+      const next = { date: todayMMDD, fullDate: todayMMDD }
+      symbols.forEach((sym) => {
+        next[sym] = lastPoint?.[sym]
+      })
+      chartData.push(next)
+    }
   }
 
+
+  // Append live WebSocket price points for real-time intraday chart
+  if (mode === 'intraday') {
+    const liveSymbols = symbols.filter((sym) => livePriceHistory[sym]?.length > 0)
+    if (liveSymbols.length > 0) {
+      const count = livePriceHistory[liveSymbols[0]].length
+      for (let i = 0; i < count; i++) {
+        const point = { date: livePriceHistory[liveSymbols[0]][i].date, fullDate: '' }
+        liveSymbols.forEach((sym) => {
+          point[sym] = livePriceHistory[sym][i]?.close ?? null
+        })
+        chartData.push(point)
+      }
+    }
+  }
 
   return (
 

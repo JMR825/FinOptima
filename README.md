@@ -1,21 +1,38 @@
 # FinOptima
 
+<div align="center"> ![OSCG 2026](/docs/oscg%202026.jpeg) </div>
+
 ## AI-Powered Portfolio Optimization System
 
 FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 1.0**, a global hackathon organized by Open Source Connect (OSC). The project combines live market data, machine learning, clustering, and portfolio optimization to help users analyze stocks and generate smart investment insights in an interactive dashboard.
 
 ---
-
+<div align="center"> ![design](/docs/Finoptima.png) </div>
 ## Dashboard Showcase
 
 ### Main Analytics Interface
-![FinOptima Main Dashboard UI](docs/Interactive-Interface.png)
+<div align="center"> ![FinOptima Main Dashboard UI](docs/Interactive-Interface.png) </div>
 
 ### Live Price Board
-![Live Prices of Stocks](docs/Live%20Price%20Board.png)
+<div align="center"> ![Live Prices of Stocks](docs/Live%20Price%20Board.png) </div>
+
+### Portfolio Summary
+<div align="center"> ![Portfolio Summary](/docs/Portfolio%20Summary.png)</div>
 
 ### Asset Allocation Charting Panel
-![FinOptima Portfolio Weights and Recharts Panel](docs/allocation.png)
+<div align="center"> ![FinOptima Asset Allocation](docs/allocation.png) </div>
+
+### Expected Return vs Volatility
+<div align="center"> ![FinOptima Returns](/docs/Returns.png) </div>
+
+### Price Trends (Daily)
+<div align="center"> ![FinOptima Trends](/docs/Price%20Trends%20(Daily).png) </div>
+
+### Price Trends (Intraday)
+<div align="center"> ![FinOptima Trends Intraday](/docs/Price%20Trends%20\(Intraday.png)) </div>
+
+### Stock Clusters && Correlation Matrix & Stock Analysis Table 
+<div align="center"> ![FinOptima Trends Intraday](/docs/clusters%20corr%20Matrix%20and%20analysis%20table.png) </div>
 
 
 ---
@@ -23,6 +40,8 @@ FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 
 ## Abstract
 
 FinOptima is designed to showcase how open-source AI can be applied to financial decision-making. Users enter stock symbols and investment preferences, and the system fetches market data, engineers financial features, predicts short-term returns using machine learning, groups similar assets through clustering, and computes optimized portfolio allocations. The results are displayed in a clean, responsive dashboard with live prices, prediction signals, risk metrics, and allocation charts.
+
+> **📘 Comprehensive technical documentation including ML model details, training methodology, feature engineering, evaluation metrics, benchmarks, and sample outputs is available at [`docs/TECHNICAL_DETAILS.md`](docs/TECHNICAL_DETAILS.md).**
 
 ## Why This Project
 
@@ -53,10 +72,20 @@ This hackathon project focuses on building a practical AI system that is:
 
 ---
 
-## Performance Note: Local vs. Cloud Deployment
+## Performance: Local vs. Cloud Deployment
 
-* **Local Workspace (Recommended for Evaluators)**: Executes instantly (~5 to 10 seconds). It leverages your local computer's unthrottled CPU cores and high-speed memory to train model weight matrices in eager memory space rapidly.
-* **Live Web Instance (https://finoptima-gts9.onrender.com)**: Processes requests within ~20- 30 seconds. Powered by an optimized, non-persistent, 100% in-memory RAM vector data pool to comply with cloud free-tier memory resource limits.
+| Metric | Local (8-core, 16 GB) | Render Free Tier (512 MB) |
+|--------|----------------------|--------------------------|
+| Full pipeline (5 symbols, no LSTM) | ~3–5 s | ~20–30 s |
+| Full pipeline (10 symbols, no LSTM) | ~5–8 s | ~40–60 s |
+| LSTM training (8 epochs, 5 symbols) | ~8–12 s | Disabled (OOM risk) |
+| Memory usage (5 symbols) | ~200 MB | ~350 MB |
+| Data freshness | Real-time | Up to 2 min delay (yfinance cache + rate limits) |
+
+**Key differences:**
+- **Local execution** uses unthrottled CPU and full RAM for fast model training.
+- **Render free tier** runs on shared CPU with 512 MB RAM ceiling. All operations are optimized for in-memory execution — no disk I/O, no SQLite, no CSV writes.
+- LSTM is disabled on Render (`ENABLE_LSTM=false`) because TensorFlow allocates 300–400 MB at load time, exceeding the free tier limit during concurrent requests.
 
 ---
 
@@ -146,6 +175,37 @@ ai-portfolio-optimizer/
 | POST | `/api/optimize` | Portfolio optimization |
 | POST | `/api/full-analysis` | Complete pipeline (dashboard) |
 
+
+## Demo Video
+
+[![FinOptima Demo](docs/Interactive-Interface.png)](https://youtu.be/your-demo-video-link)
+
+To be Added
+
+## Sample Output
+
+A complete sample request and response is documented in [`docs/TECHNICAL_DETAILS.md`](docs/TECHNICAL_DETAILS.md#sample-expected-outputs).
+
+Quick example (5-stock daily analysis with `optimization_goal="max_sharpe"`, `risk_preference="medium"`):
+
+| Asset | Weight | Predicted Return | Trend | Confidence |
+|-------|--------|-----------------|-------|------------|
+| AAPL | 25% | +0.85% | Upward | 72.3 |
+| MSFT | 20% | +0.62% | Upward | 68.1 |
+| GOOGL | 15% | +0.38% | Upward | 55.4 |
+| NVDA | 30% | +1.10% | Upward | 81.5 |
+| TSLA | 10% | -0.22% | Downward | 45.2 |
+
+| Metric | Value |
+|--------|-------|
+| Expected annual return | 12.45% |
+| Expected annual volatility | 18.20% |
+| Sharpe ratio | 0.574 |
+| Max drawdown | -28.30% |
+| VaR (95%) | -2.45% |
+| CVaR (95%) | -3.08% |
+
+> Full JSON response structure is shown in the technical documentation.
 
 ## Output format
 

@@ -62,6 +62,24 @@ export default function App() {
   })
 
 
+  // Accumulate WebSocket prices into rolling history for real-time chart
+  const liveHistoryRef = useRef({})
+  const [livePriceHistory, setLivePriceHistory] = useState({})
+
+  useEffect(() => {
+    if (!wsLivePrices.length) return
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false })
+    const next = { ...liveHistoryRef.current }
+    wsLivePrices.forEach((item) => {
+      const sym = item.symbol
+      const prev = next[sym] || []
+      next[sym] = [...prev, { date: now, close: Number(item.price ?? 0) }]
+      if (next[sym].length > 60) next[sym] = next[sym].slice(-60)
+    })
+    liveHistoryRef.current = next
+    setLivePriceHistory(next)
+  }, [wsLivePrices])
+
   // Warm-up Render backend on mount to trigger cold start early
   useEffect(() => { fetchHealth().catch(() => {}) }, [])
 
@@ -166,7 +184,7 @@ export default function App() {
             )}
 
             {displayData && (
-              <div key={isFresh ? displayData.timestamp || 'fresh' : 'cached'}>
+              <div key={isFresh ? displayData.timestamp || 'fresh' : 'cached'} className="space-y-6">
                 <div className="animate-fade-in-up">
                   <MarketStatusBar
                     dataSource={displayData.data_source}
@@ -187,7 +205,7 @@ export default function App() {
                   <RiskReturnChart predictions={displayData.predictions} riskAnalysis={displayData.risk_analysis} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '320ms' }}>
-                  <PriceTrendChart priceHistory={displayData.price_history} mode={displayData.mode} />
+                  <PriceTrendChart priceHistory={displayData.price_history} mode={displayData.mode} livePriceHistory={livePriceHistory} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
                   <ClusterView clusterSummary={displayData.cluster_summary} />

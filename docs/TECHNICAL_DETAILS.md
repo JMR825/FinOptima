@@ -2,6 +2,8 @@
 
 ## System Architecture
 
+![System Architecture](/docs/System%20Architecture.png)
+
 ```
 ┌──────────┐     ┌──────────────────────────────────────┐     ┌──────────────┐
 │  React   │ ◄──► │         FastAPI Backend              │ ◄──► │   yfinance   │
@@ -18,6 +20,18 @@
 ```
 
 All data processing is 100% in-memory. No disk I/O occurs during request handling (CSV generation is a separate dev-only utility).
+
+### Sample Data
+
+Pre-fetched daily and intraday CSV files for 28 major US equities and ETFs are available in the [`live_data/`](../live_data) directory at the project root:
+
+The datasets were fetched on 12 June.
+| Folder | Contents |
+|---|---|
+| `live_data/daily/` | 28 CSV files, each with 1 year of daily OHLCV data (AAPL, MSFT, GOOGL, AMZN, TSLA, META, NVDA, JPM, NFLX, AMD, AVGO, COST, KO, PEP, WMT, PG, V, BAC, JNJ, UNH, XOM, CAT, GE, LIN, SPY, QQQ, IWM, GLD) |
+| `live_data/intraday/` | Intraday 5m bars for AAPL, MSFT, GOOGL, NVDA (under `5m/` subfolder) |
+
+These can be used with the `sample` data provider for testing without yfinance calls. The generator script is at `backend/app/utils/sample_data_generator.py`.
 
 ---
 
@@ -37,8 +51,8 @@ All data processing is 100% in-memory. No disk I/O occurs during request handlin
 
 | Mode | Period | Interval | Min rows |
 |---|---|---|---|
-| `"daily"` | `"1y"` | `"1d"` | 5 |
-| `"intraday"` | `"5d"` | `"5m"` | 20 |
+| `"daily"` | `"6mo"` | `"1d"` | 5 |
+| `"intraday"` | `"2d"` | `"5m"` | 20 |
 
 ### 2. Feature Engineering (`preprocessing.py`)
 
@@ -80,7 +94,7 @@ Applied per-symbol chronologically:
 
 - **Target:** Next-period return (`daily_return.shift(-1)`)
 - **Train/test split:** 80/20 chronological (`shuffle=False`)
-- **Minimum training rows:** 30
+- **Minimum training rows:** 20
 - **Scaling:** `StandardScaler` applied only to LinearRegression (Random Forest uses raw values)
 - **Selection:** Model with lower MAE on the 20% test set is used for predictions
 
@@ -221,8 +235,8 @@ Computes implied equilibrium returns via reverse optimization, then blends with 
 
 | Goal | Objective |
 |---|---|
-| `"sharpe"` | Maximize `(return - RFR) / (vol × risk_multiplier)` |
-| `"volatility"` | Minimize `sqrt(wᵀΣw)` |
+| `"max_sharpe"` | Maximize `(return - RFR) / (vol × risk_multiplier)` |
+| `"min_volatility"` | Minimize `sqrt(wᵀΣw)` |
 
 ### Risk Preference Multipliers
 
@@ -300,7 +314,7 @@ POST /api/full-analysis
   "mode": "daily",
   "budget": 10000,
   "risk_preference": "medium",
-  "optimization_goal": "sharpe"
+  "optimization_goal": "max_sharpe"
 }
 ```
 
