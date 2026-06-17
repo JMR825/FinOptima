@@ -190,7 +190,7 @@ ai-portfolio-optimizer/
 
 ## Demo Video
 
-[![FinOptima Demo]((https://1drv.ms/v/c/4131e6352582445b/IQDERe3_11FPQIGuzUMk8AjYARC4T5u4HPYfE1FR9pKrktM?e=0gOZAu))
+[![FinOptima Demo](https://youtu.be/JjOK2J6znAE)
 
 Complete workflow: stock selection → model execution → prediction generation → portfolio optimization results.
 
