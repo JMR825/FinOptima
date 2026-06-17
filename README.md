@@ -190,7 +190,7 @@ ai-portfolio-optimizer/
 
 ## Demo Video
 
-[![FinOptima Demo](docs/Interactive-Interface.png)](https://youtu.be/your-demo-video-link)
+[![FinOptima Demo]()](https://youtu.be/your-demo-video-link)
 
 To be Added
 
