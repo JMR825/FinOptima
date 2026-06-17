@@ -23,13 +23,16 @@ FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 
 
 <div align="center"><img src="docs/Portfolio Summary.png" alt="Portfolio Summary" /></div>
 
-### Asset Allocation Charting Panel
-
-<div align="center"><img src="docs/allocation.png" alt="FinOptima Asset Allocation" /></div>
-
-### Expected Return vs Volatility
-
-<div align="center"><img src="docs/Returns.png" alt="FinOptima Returns" /></div>
+<div style="display: flex; gap: 16px;">
+  <div style="flex: 1; text-align: center;">
+    <h3>Asset Allocation Charting Panel</h3>
+    <img src="docs/allocation.png" alt="FinOptima Asset Allocation" style="max-width: 100%;" />
+  </div>
+  <div style="flex: 1; text-align: center;">
+    <h3>Expected Return vs Volatility</h3>
+    <img src="docs/Returns.png" alt="FinOptima Returns" style="max-width: 100%;" />
+  </div>
+</div>
 
 ### Price Trends (Daily)
 
