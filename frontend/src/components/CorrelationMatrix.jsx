@@ -4,10 +4,10 @@ export default function CorrelationMatrix({ correlationMatrix }) {
   if (symbols.length < 2) return null
 
   const color = (val) => {
-    if (val >= 0.7) return 'bg-emerald-900/60 text-emerald-300'
-    if (val >= 0.3) return 'bg-blue-900/40 text-blue-300'
+    if (val >= 0.7) return 'bg-red-800/60 text-red-300'
+    if (val >= 0.3) return 'bg-orange-800/40 text-orange-300'
     if (val >= -0.3) return 'bg-slate-700/50 text-slate-300'
-    return 'bg-rose-900/40 text-rose-300'
+    return 'bg-blue-800/40 text-blue-300'
   }
 
   return (
