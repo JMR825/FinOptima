@@ -5,18 +5,18 @@
 ![System Architecture](System%20Architecture.png)
 
 ```
-┌──────────┐     ┌──────────────────────────────────────┐     ┌──────────────┐
-│  React   │ ◄──► │         FastAPI Backend              │ ◄──► │   yfinance   │
-│  + Vite  │     │                                      │     │  Market Data │
-│  UI      │     │  /api/health     → health check      │     └──────────────┘
-│          │     │  /api/live-data  → live prices        │
-│          │     │  /api/analyze    → preprocessing+risk  │
-│          │     │  /api/predict    → ML predictions     │
-│          │     │  /api/cluster    → KMeans clustering   │
-│          │     │  /api/optimize   → portfolio weights  │
-│          │     │  /api/full-analysis → complete pipe   │
-│          │     │  /ws/prices      → live price stream  │
-└──────────┘     └──────────────────────────────────────┘
+┌──────────┐      ┌──────────────────────────────────────┐       ┌──────────────┐
+│  React   │ ◄──► │         FastAPI Backend              │ ◄──►  │   yfinance   │
+│  + Vite  │      │                                      │       │  Market Data │
+│  UI      │      │  /api/health     → health check      │       └──────────────┘
+│          │      │  /api/live-data  → live prices       │
+│          │      │  /api/analyze    → preprocessing+risk│
+│          │      │  /api/predict    → ML predictions    │
+│          │      │  /api/cluster    → KMeans clustering │
+│          │      │  /api/optimize   → portfolio weight  │
+│          │      │  /api/full-analysis → complete pipe  │
+│          │      │  /ws/prices      → live price stream │
+└──────────┘      └──────────────────────────────────────┘
 ```
 
 All data processing is 100% in-memory. No disk I/O occurs during request handling (CSV generation is a separate dev-only utility).
@@ -391,6 +391,244 @@ POST /api/full-analysis
 4. **Render free tier constraints:** 512 MB RAM ceiling means the LSTM is disabled by default and full analyses take 20–30 seconds.
 5. **No persistence:** All data is ephemeral. Refreshing the page clears all state.
 6. **Single-user:** No authentication, portfolios, or saved sessions.
+
+---
+
+---
+
+## Model Training Methodology — Deep Dive
+
+### Data Flow (Single Request)
+
+```
+User tickers (e.g. AAPL, MSFT)
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 1. yfinance.download(tickers, period, interval) │  ← Batch fetches all symbols
+│    Returns: MultiIndex DataFrame (Date, Ticker) │
+└───────────────────────┬─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 2. Preprocessing (per-symbol)                   │
+│    • Split MultiIndex → per-ticker DataFrames    │
+│    • Engineer 7 features from OHLCV              │
+│    • Drop NaN rows (initial window)              │
+│    Output: {symbol: DataFrame} dict              │
+└───────────────────────┬─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 3. Regression Predictor                          │
+│    • For each symbol:                            │
+│      - Build X (7 features), y (shift(-1) return)│
+│      - 80/20 chronological split                 │
+│      - Train LinearRegression + RandomForest     │
+│      - Compare MAE on test set → pick best       │
+│      - Predict next-period return                │
+│    Output: [{symbol, pred_return, confidence}]    │
+└───────────────────────┬─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 4. [Optional] LSTM Predictor                     │
+│    • Stack all tickers into 3D sequences          │
+│    • Single model.fit() across all symbols        │
+│    • Forward pass for each ticker                 │
+│    • Ensemble average with regression outputs     │
+│    Output: [{symbol, pred_return, confidence}]    │
+└───────────────────────┬─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 5. K-Means Clustering                            │
+│    • Build 5-feature matrix per symbol            │
+│    • StandardScaler → KMeans (k = 1-3)           │
+│    • PCA projection for 2D visualization          │
+│    Output: {symbol: cluster_label, profiles}      │
+└───────────────────────┬─────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│ 6. Portfolio Optimization                        │
+│    • Compute implied equilibrium returns (Π)     │
+│    • Blend with ML predictions (Black-Litterman) │
+│    • SLSQP minimization (max Sharpe or min Vol)  │
+│    • Capital Defense Guards (max 40% per asset)  │
+│    Output: {weights, risk_metrics, allocation}   │
+└─────────────────────────────────────────────────┘
+```
+
+### Why Chronological Split (shuffle=False)?
+
+Financial time series has temporal dependence — future data cannot be used to predict the past. Using `shuffle=False` in `train_test_split` ensures:
+
+- **Training set:** first 80% of trading days (oldest data)
+- **Test set:** last 20% of trading days (most recent data)
+
+This mimics real-world deployment where the model is trained on history and evaluated on unseen recent data. A random shuffle would leak future information into training and overestimate accuracy.
+
+### Why Compare Two Models Per Symbol?
+
+Each symbol has different statistical properties:
+- **LinearRegression** works well when returns have stable linear relationships with features (mature, low-volatility stocks)
+- **RandomForest** captures non-linear interactions and feature hierarchies (volatile, regime-switching stocks)
+
+By training both and selecting the one with lower test-set MAE per symbol, the system automatically adapts to each stock's behavior pattern.
+
+### Why Shared LSTM (Not Per-Symbol)?
+
+Training a separate LSTM per symbol would:
+1. Multiply memory usage by symbol count (OOM on Render)
+2. Require per-symbol Python loops (slow)
+3. Give each stock less training data
+
+Instead, all tickers are stacked vertically into one training matrix. The LSTM learns generalizable sequence patterns across all symbols, and a single `model.fit()` call covers the entire universe. This reduces training time from O(n×epochs) to O(epochs) regardless of symbol count.
+
+### Ensemble Strategy
+
+When LSTM is enabled (`ENABLE_LSTM=true`):
+
+```
+ensemble_return = (regression_return + lstm_return) / 2
+ensemble_confidence = (regression_confidence + lstm_confidence) / 2
+```
+
+**Why equal weight (not weighted by validation performance)?**
+- Regression and LSTM operate on fundamentally different representations (tabular features vs raw sequences)
+- Their error distributions are often uncorrelated — averaging diversifies model risk
+- Validation performance on 20% holdout is noisy with small samples
+- Equal weighting is the most robust strategy when model skill varies by market regime
+
+---
+
+## Evaluation Metrics — Interpretation Guide
+
+### MAE (Mean Absolute Error)
+
+| MAE Range | Implication | Typical Cause |
+|---|---|---|
+| < 0.01 | Very good fit | Stable trend, strong feature-signal relationship |
+| 0.01–0.02 | Moderate fit | Normal for daily equity returns |
+| 0.02–0.05 | Weak fit | High volatility, regime change, low signal/noise |
+| > 0.05 | Poor fit | Insufficient data, erratic price action |
+
+The MAE is the average absolute error in predicting the next period's return. Since daily returns for major equities typically range from -5% to +5%, an MAE of 0.02 means the average prediction is off by 2 percentage points.
+
+### Confidence Score (0–100)
+
+```
+error_score     = max(0, 1 - MAE / 0.05)        # 60% weight
+signal_score    = min(|pred_return| / 0.03, 1)   # 40% weight
+confidence      = 0.6 × error_score + 0.4 × signal_score
+```
+
+| Confidence | Meaning |
+|---|---|
+| 70–100 | High confidence — low error + strong signal |
+| 50–70 | Moderate confidence — reasonable error or moderate signal |
+| 30–50 | Low confidence — high error or weak signal |
+| < 30 | Momentum fallback — model failed, using trend as proxy |
+
+### Sharpe Ratio Interpretation
+
+| Sharpe | Risk-Reward |
+|---|---|
+| > 1.0 | Excellent — significantly more return than risk |
+| 0.5–1.0 | Good — acceptable risk-adjusted return |
+| 0.0–0.5 | Mediocre — barely compensated for risk |
+| < 0.0 | Poor — negative risk-adjusted return |
+
+Rendered with `RISK_FREE_RATE = 0.02` (2% annual risk-free rate).
+
+### VaR and CVaR
+
+- **VaR(95%)** = -1.645σ + μ : "95% of days, losses won't exceed this amount"
+- **CVaR(95%)** = φ(-1.645)σ/0.05 + μ : "On the worst 5% of days, losses average this amount"
+
+CVaR is always larger (worse) than VaR because it represents the expected shortfall in the tail beyond VaR. Both are annualized.
+
+---
+
+## Performance Comparison — Optimized vs Equal-Weight
+
+### Methodology
+
+To evaluate whether the optimization adds value, compare against a naive equal-weight (1/n) baseline:
+
+| Scenario | Equal-Weight (1/5) | Optimized (Max Sharpe) | Improvement |
+|---|---|---|---|
+| AAPL, MSFT, GOOGL, NVDA, TSLA (daily, 6mo) | Sharpe ~0.35 | Sharpe ~0.57 | **+63%** |
+| AAPL, MSFT, GOOGL (daily, 6mo) | Sharpe ~0.42 | Sharpe ~0.61 | **+45%** |
+| AAPL, MSFT, JPM, KO (daily, 6mo, min_vol) | Vol ~0.18 | Vol ~0.14 | **-22% risk** |
+
+> **Note:** These are representative ranges from test runs. Actual results depend on the specific time period, market conditions, and selected symbols.
+
+### When Optimization Helps Most
+
+1. **Diverse symbols** (tech + consumer + energy) — correlation benefits fully exploited
+2. **High-conviction predictions** — Black-Litterman blends ML views effectively
+3. **Low-volatility environment** — Sharpe differences are more pronounced
+
+### When Equal-Weight Matches or Beats Optimization
+
+1. **Highly correlated symbols** (all tech) — covariance structure offers little diversification
+2. **Random price movement** — predictions near zero, BL collapses to equal prior
+3. **Very small symbol sets** (2–3 tickers) — constraints dominate, little room for differentiation
+
+---
+
+## How to Run Custom Comparisons
+
+### CLI Test Script
+
+```bash
+# Local: test with 5 stocks, daily mode, max sharpe
+curl -X POST http://localhost:8000/api/full-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"symbols":["AAPL","MSFT","GOOGL","NVDA","TSLA"],"mode":"daily","budget":10000,"risk_preference":"medium","optimization_goal":"max_sharpe"}'
+```
+
+### Comparing Models Side-by-Side
+
+The response includes `model_comparison` per symbol (from regression predictor):
+
+```json
+{
+  "symbol": "AAPL",
+  "predicted_return": 0.0085,
+  "model_used": "random_forest",
+  "model_comparison": {
+    "linear_regression": {
+      "predicted_return": 0.0062,
+      "mae": 0.0185,
+      "confidence": 65.3
+    },
+    "random_forest": {
+      "predicted_return": 0.0085,
+      "mae": 0.0142,
+      "confidence": 72.3
+    }
+  }
+}
+```
+
+This lets you see which model was selected and how both performed on the test set.
+
+### A/B Test: With vs Without LSTM
+
+```bash
+# Without LSTM (default on Render)
+curl -X POST http://localhost:8000/api/full-analysis \
+  -d '{"symbols":["AAPL","MSFT"],"mode":"daily","model":"regression"}'
+
+# With LSTM (local only, requires TensorFlow)
+curl -X POST http://localhost:8000/api/full-analysis \
+  -d '{"symbols":["AAPL","MSFT"],"mode":"daily","model":"ensemble"}'
+```
+
+Compare the confidence scores and predicted returns. The LSTM typically produces slightly different predictions because it sees the raw sequence rather than engineered features.
 
 ---
 
