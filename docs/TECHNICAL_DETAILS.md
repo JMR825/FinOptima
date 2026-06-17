@@ -2,7 +2,7 @@
 
 ## System Architecture
 
-![System Architecture](/docs/System%20Architecture.png)
+![System Architecture](System%20Architecture.png)
 
 ```
 ┌──────────┐     ┌──────────────────────────────────────┐     ┌──────────────┐
