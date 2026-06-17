@@ -8,30 +8,39 @@ FinOptima is an AI-driven financial analytics platform built for **OSC AI Build 
 
 ---
 <div align="center"> ![design](docs/FinOptima.png) </div>
+
 ## Dashboard Showcase
 
 ### Main Analytics Interface
+
 <div align="center"> ![FinOptima Main Dashboard UI](docs/Interactive-Interface.png) </div>
 
 ### Live Price Board
+
 <div align="center"> ![Live Prices of Stocks](docs/Live%20Price%20Board.png) </div>
 
 ### Portfolio Summary
- <div align="center"> ![Portfolio Summary](docs/Portfolio%20Summary.png)</div>
+
+<div align="center"> ![Portfolio Summary](docs/Portfolio%20Summary.png)</div>
 
 ### Asset Allocation Charting Panel
+
 <div align="center"> ![FinOptima Asset Allocation](docs/allocation.png) </div>
 
 ### Expected Return vs Volatility
+
  <div align="center"> ![FinOptima Returns](docs/Returns.png) </div>
 
 ### Price Trends (Daily)
- <div align="center"> ![FinOptima Trends](docs/Price%20Trends%20(Daily).png) </div>
+
+<div align="center"> ![FinOptima Trends](docs/Price%20Trends%20(Daily).png) </div>
 
 ### Price Trends (Intraday)
+
 <div align="center"> ![FinOptima Trends Intraday](docs/Price%20Trends%20(Intraday).png) </div>
 
 ### Stock Clusters, Correlation Matrix & Analysis Table
+
 <div align="center"> ![Clusters and Correlation Matrix](docs/clusters%20corr%20Matrix%20and%20analysis%20table.png) </div>
 
 
